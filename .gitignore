@@ -1,0 +1,9 @@
+# Raw health data — never commit
+data/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Generated output
+output/
