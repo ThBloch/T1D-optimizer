@@ -10,3 +10,9 @@ __pycache__/
 
 # Generated output
 output/
+
+# Claude Code project settings
+.claude/
+
+# Superseded files (pre-API CSVs, old scripts)
+archive/
