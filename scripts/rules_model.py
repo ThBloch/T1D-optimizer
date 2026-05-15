@@ -15,6 +15,7 @@ import numpy as np
 from sklearn.tree import DecisionTreeRegressor, export_text
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_absolute_error
+from whoop_loader import load_whoop
 
 BASE      = 'D:/claude/t1d/data'
 DIAGNOSIS = date(2025, 4, 9)
@@ -51,21 +52,6 @@ def load_dexcom():
         if d not in basal_by_date: basal_by_date[d]=[dt,u]
         else: basal_by_date[d][1]+=u
     return sorted(glucose.items()), sorted([(v[0],d,v[1]) for d,v in basal_by_date.items()])
-
-def load_whoop():
-    dirs=[d for d in os.listdir(BASE) if d.startswith('my_whoop_data_') and os.path.isdir(os.path.join(BASE,d))]
-    latest=os.path.join(BASE,sorted(dirs)[-1])
-    cycles=[]
-    with open(os.path.join(latest,'physiological_cycles.csv'),'r',encoding='utf-8') as f:
-        for row in csv.DictReader(f):
-            try:
-                cs=datetime.strptime(row['Cycle start time'],'%Y-%m-%d %H:%M:%S')
-                ce=datetime.strptime(row['Cycle end time'],'%Y-%m-%d %H:%M:%S') if row['Cycle end time'].strip() else None
-                cd=(ce-timedelta(hours=6)).date() if ce else cs.date()
-                cycles.append({'date':cd,
-                    'strain': float(row['Day Strain']) if row['Day Strain'].strip() else None})
-            except: pass
-    return {c['date']:c for c in cycles if c['date']>=DIAGNOSIS}
 
 def overnight_stats(inj_dt, glucose_list):
     end=datetime.combine(inj_dt.date()+timedelta(days=1),datetime.min.time().replace(hour=7))

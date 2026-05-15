@@ -5,6 +5,7 @@ Spearman correlation + Mann-Whitney median split A/B test on all candidates.
 import csv, glob, os, math
 from datetime import datetime, timedelta, date
 from collections import defaultdict
+from whoop_loader import load_whoop
 
 BASE      = 'D:/claude/t1d/data'
 DIAGNOSIS = date(2025, 4, 9)
@@ -63,29 +64,6 @@ def load_dexcom():
     return (sorted(glucose.items()),
             sorted([(v[0], d, v[1]) for d, v in basal_by_date.items()]),
             bolus)
-
-def load_whoop():
-    dirs = [d for d in os.listdir(BASE)
-            if d.startswith('my_whoop_data_') and os.path.isdir(os.path.join(BASE, d))]
-    latest = os.path.join(BASE, sorted(dirs)[-1])
-    cycles = []
-    with open(os.path.join(latest, 'physiological_cycles.csv'), 'r', encoding='utf-8') as f:
-        for row in csv.DictReader(f):
-            try:
-                cs = datetime.strptime(row['Cycle start time'], '%Y-%m-%d %H:%M:%S')
-                ce = datetime.strptime(row['Cycle end time'], '%Y-%m-%d %H:%M:%S') \
-                     if row['Cycle end time'].strip() else None
-                cd = (ce - timedelta(hours=6)).date() if ce else cs.date()
-                cycles.append({
-                    'date':     cd,
-                    'strain':   float(row['Day Strain'])                  if row['Day Strain'].strip()                  else None,
-                    'hrv':      float(row['Heart rate variability (ms)']) if row['Heart rate variability (ms)'].strip() else None,
-                    'recovery': float(row['Recovery score %'])            if row['Recovery score %'].strip()            else None,
-                    'rhr':      float(row['Resting heart rate (bpm)'])    if row['Resting heart rate (bpm)'].strip()    else None,
-                })
-            except Exception:
-                pass
-    return {c['date']: c for c in cycles if c['strain'] is not None and c['date'] >= DIAGNOSIS}
 
 def rolling_avg(d, n, idx):
     v = [idx[d - timedelta(days=i)]['strain']

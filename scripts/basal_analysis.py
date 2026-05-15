@@ -7,6 +7,7 @@ Run: py basal_analysis.py
 import csv, glob, os, math
 from datetime import datetime, timedelta, date
 from collections import defaultdict
+from whoop_loader import load_whoop
 
 BASE      = 'D:/claude/t1d/data'
 DIAGNOSIS = date(2025, 4, 9)
@@ -78,56 +79,6 @@ def load_dexcom():
     glucose_list = sorted(glucose.items())
     basal_list   = sorted([(v[0], d, v[1]) for d, v in basal_by_date.items()])
     return glucose_list, basal_list, bolus
-
-# ── LOAD WHOOP ────────────────────────────────────────────────────────────────
-def load_whoop():
-    dirs = sorted([d for d in os.listdir(BASE)
-                   if d.startswith('my_whoop_data_') and os.path.isdir(os.path.join(BASE, d))])
-    latest = os.path.join(BASE, dirs[-1])
-
-    cycles, workouts = [], []
-
-    with open(os.path.join(latest, 'physiological_cycles.csv'), 'r', encoding='utf-8') as f:
-        for row in csv.DictReader(f):
-            try:
-                cs = datetime.strptime(row['Cycle start time'], '%Y-%m-%d %H:%M:%S')
-                ce = datetime.strptime(row['Cycle end time'],   '%Y-%m-%d %H:%M:%S') \
-                     if row['Cycle end time'].strip() else None
-                cycle_date = (ce - timedelta(hours=6)).date() if ce else cs.date()
-                cycles.append({
-                    'date':     cycle_date,
-                    'strain':   float(row['Day Strain'])                   if row['Day Strain'].strip()                   else None,
-                    'recovery': float(row['Recovery score %'])             if row['Recovery score %'].strip()             else None,
-                    'hrv':      float(row['Heart rate variability (ms)'])  if row['Heart rate variability (ms)'].strip()  else None,
-                    'rhr':      float(row['Resting heart rate (bpm)'])     if row['Resting heart rate (bpm)'].strip()     else None,
-                    'sleep_perf': float(row['Sleep performance %'])        if row['Sleep performance %'].strip()          else None,
-                })
-            except Exception:
-                pass
-
-    with open(os.path.join(latest, 'workouts.csv'), 'r', encoding='utf-8') as f:
-        for row in csv.DictReader(f):
-            try:
-                ws = datetime.strptime(row['Workout start time'], '%Y-%m-%d %H:%M:%S')
-                we = datetime.strptime(row['Workout end time'],   '%Y-%m-%d %H:%M:%S')
-                workouts.append({
-                    'date':     ws.date(),
-                    'start':    ws,
-                    'end':      we,
-                    'duration': float(row['Duration (min)']),
-                    'activity': row['Activity name'],
-                    'strain':   float(row['Activity Strain']) if row['Activity Strain'].strip() else 0,
-                })
-            except Exception:
-                pass
-
-    # index by date
-    strain_by_date   = {c['date']: c for c in cycles if c['strain'] is not None and c['date'] >= DIAGNOSIS}
-    workouts_by_date = defaultdict(list)
-    for w in workouts:
-        workouts_by_date[w['date']].append(w)
-
-    return strain_by_date, workouts_by_date
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────
 def rolling_avg(d, n, index, key='strain'):
@@ -253,7 +204,7 @@ def run():
 
     # ── STEP 1: Load data ──────────────────────────────────────────────────
     glucose_list, basal_list, bolus = load_dexcom()
-    strain_by_date, workouts_by_date = load_whoop()
+    strain_by_date = load_whoop()
 
     g_dates = [dt.date() for dt, _ in glucose_list]
     g_start, g_end = min(g_dates), max(g_dates)
