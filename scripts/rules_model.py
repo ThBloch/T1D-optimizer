@@ -16,6 +16,7 @@ from sklearn.tree import DecisionTreeRegressor, export_text
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_absolute_error
 from whoop_loader import load_whoop
+from rules import thomas_rules
 
 BASE      = 'D:/claude/t1d/data'
 DIAGNOSIS = date(2025, 4, 9)
@@ -78,53 +79,6 @@ def overnight_stats(inj_dt, glucose_list):
         'hypo_events': hypo_events,
         'hypo_correction': hypo_events > 0 and max(vals[next(i for i,v in enumerate(vals) if v<HYPO_THR):]) > 7.0,
     }
-
-# ── THOMAS'S RULES ─────────────────────────────────────────────────────────────
-def thomas_rules(yesterday_dose, fasting, hypo_events, s1,
-                 fasting_lo=10.5, fasting_mid=12.0, fasting_hi=14.0,
-                 activity_threshold=12.0):
-    """
-    Encode Thomas's rules exactly.
-    Returns (suggested_dose, adjustment_breakdown)
-    """
-    if yesterday_dose is None:
-        return None, ['No anchor — cannot suggest']
-
-    adj_glucose  = 0
-    adj_activity = 0
-    reasoning    = []
-
-    # Hypo takes priority over fasting
-    if hypo_events >= 2:
-        adj_glucose = -2
-        reasoning.append(f'Multiple hypos ({hypo_events}) → -2u')
-    elif hypo_events == 1:
-        adj_glucose = -1
-        reasoning.append(f'One hypo → -1u')
-    elif fasting is not None:
-        if fasting > fasting_hi:
-            adj_glucose = +3
-            reasoning.append(f'Fasting {fasting} > {fasting_hi} (very very high) → +3u')
-        elif fasting > fasting_mid:
-            adj_glucose = +2
-            reasoning.append(f'Fasting {fasting} > {fasting_mid} (very high) → +2u')
-        elif fasting > fasting_lo:
-            adj_glucose = +1
-            reasoning.append(f'Fasting {fasting} > {fasting_lo} (a little high) → +1u')
-        else:
-            reasoning.append(f'Fasting {fasting} in range → no adjustment')
-
-    # Activity always stacks
-    if s1 is not None and s1 >= activity_threshold:
-        adj_activity = -2
-        reasoning.append(f's1={s1:.1f} ≥ {activity_threshold} (very active) → -2u')
-
-    raw = yesterday_dose + adj_glucose + adj_activity
-    dose = max(15, min(29, round(raw)))
-    if dose != raw:
-        reasoning.append(f'Clamped {raw:.0f}u → {dose}u')
-
-    return dose, reasoning
 
 # ── BUILD NIGHTLY DATASET ──────────────────────────────────────────────────────
 glucose_list, basal_list = load_dexcom()

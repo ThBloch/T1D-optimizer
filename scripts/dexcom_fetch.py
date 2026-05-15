@@ -8,6 +8,8 @@ import json, getpass
 from datetime import datetime, timedelta, date
 from pathlib import Path
 
+from rules import thomas_rules
+
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 BASE       = Path('D:/claude/t1d')
 CREDS_FILE = BASE / 'dexcom_creds.json'
@@ -76,44 +78,6 @@ def overnight_stats(readings, inj_date):
         'n_readings':  n,
     }
 
-# ── THOMAS'S RULES ────────────────────────────────────────────────────────────
-def thomas_rules(yesterday_dose, fasting, hypo_events, s1):
-    if yesterday_dose is None:
-        return None, ['no anchor dose']
-
-    adj_glucose = adj_activity = 0
-    reasoning = []
-
-    if hypo_events >= 2:
-        adj_glucose = -2
-        reasoning.append(f'{hypo_events} hypo events -> -2u')
-    elif hypo_events == 1:
-        adj_glucose = -1
-        reasoning.append('1 hypo event -> -1u')
-    elif fasting is not None:
-        if fasting > 14.0:
-            adj_glucose = +3
-            reasoning.append(f'fasting {fasting} > 14.0 -> +3u')
-        elif fasting > 12.0:
-            adj_glucose = +2
-            reasoning.append(f'fasting {fasting} > 12.0 -> +2u')
-        elif fasting > 10.5:
-            adj_glucose = +1
-            reasoning.append(f'fasting {fasting} > 10.5 -> +1u')
-        else:
-            reasoning.append(f'fasting {fasting} in range -> no adjustment')
-
-    if s1 is not None and s1 >= 12.0:
-        adj_activity = -2
-        reasoning.append(f's1={s1:.1f} >= 12.0 -> -2u')
-
-    raw  = yesterday_dose + adj_glucose + adj_activity
-    dose = max(15, min(29, round(raw)))
-    if dose != raw:
-        reasoning.append(f'clamped {raw:.0f}u -> {dose}u')
-
-    return dose, reasoning
-
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 def run():
     today     = date.today()
@@ -150,14 +114,21 @@ def run():
     print(f"\n{trend_note}")
 
     print()
-    dose_str = input("Yesterday's basal dose (u): ").strip()
+    try:
+        dose_str = input("Yesterday's basal dose (u): ").strip()
+    except EOFError:
+        print("Non-interactive run -- skipping dose suggestion.")
+        return
     try:
         yesterday_dose = float(dose_str)
     except ValueError:
         print("Invalid input. Cannot compute suggestion.")
         return
 
-    s1_str = input("Today's WHOOP strain (s1) [Enter to skip]: ").strip()
+    try:
+        s1_str = input("Today's WHOOP strain (s1) [Enter to skip]: ").strip()
+    except EOFError:
+        s1_str = ''
     s1 = float(s1_str) if s1_str else None
 
     dose, reasoning = thomas_rules(
