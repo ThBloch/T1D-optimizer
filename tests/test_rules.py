@@ -99,6 +99,21 @@ class TestThomasRules(unittest.TestCase):
         dose, _ = thomas_rules(20, 9.0, 0, 5.0, fasting_lo=8.0)
         self.assertEqual(dose, 21)
 
+    def test_new_pen_minus_one(self):
+        dose, reasoning = thomas_rules(20, 8.0, 0, 5.0, new_pen=True)
+        self.assertEqual(dose, 19)
+        self.assertTrue(any('New pen' in r for r in reasoning))
+
+    def test_new_pen_default_false(self):
+        # Explicit baseline: no new_pen -> no adjustment
+        dose, _ = thomas_rules(20, 8.0, 0, 5.0)
+        self.assertEqual(dose, 20)
+
+    def test_new_pen_stacks_with_glucose_and_activity(self):
+        # +1 fasting tier + -2 activity + -1 new pen = -2 net
+        dose, _ = thomas_rules(20, 11.0, 0, 13.0, new_pen=True)
+        self.assertEqual(dose, 18)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

@@ -4,7 +4,7 @@ Pulls last 24h from Dexcom Share API (no CSV export needed).
 Run: py -X utf8 dexcom_fetch.py
 """
 
-import json, getpass
+import json, getpass, sys
 from datetime import datetime, timedelta, date
 from pathlib import Path
 
@@ -170,11 +170,13 @@ def run():
     if today_strain is None:
         print(f"\n  Today's WHOOP strain not yet on file (in-progress cycle).")
 
+    new_pen = '--new-pen' in sys.argv
     dose, reasoning = thomas_rules(
         yesterday_dose=yesterday_dose,
         fasting=stats['fasting'],
         hypo_events=stats['hypo_events'],
         s1=today_strain,
+        new_pen=new_pen,
     )
 
     upsert_row(diary, {

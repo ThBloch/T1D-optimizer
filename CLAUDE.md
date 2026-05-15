@@ -26,11 +26,11 @@ output/                   generated reports (not committed)
 - `basal_analysis.py` — main analysis (matching model, weekly pattern, tonight's range)
 - `rules_model.py` — Thomas's rules backtest + Decision Tree comparison + tonight's suggestion
 - `predictor_test.py`, `ml_model.py`, `bolus_noise_test.py` — secondary analyses
-- `rules.py` — single source of truth for `thomas_rules()`; imported by dexcom_fetch + rules_model
+- `rules.py` — single source of truth for `thomas_rules()`; imported by dexcom_fetch + rules_model. Adjustments: hypo (priority over fasting), fasting tiers, activity (s1>=12), new pen (-1u). All stack except hypo blocks fasting tier.
 - `dexcom_loader.py` — shared Clarity CSV loader; returns `(glucose_list, basal_list, bolus_by_date)`. Warns at load time if any rows fail to parse.
 - `whoop_loader.py` — shared WHOOP loader; reads `data/whoop_api/*.json` → `{date: {strain, recovery, hrv, rhr, sleep_perf}}`
 - `dose_diary.py` — read/upsert `data/doses.csv` (one row per dose-night)
-- `dexcom_fetch.py` — daily CGM fetch via `pydexcom`; anchors yesterday's dose with **Clarity > diary > prompt** priority; backfills overnight outcome; writes today's suggestion to diary
+- `dexcom_fetch.py` — daily CGM fetch via `pydexcom`; anchors yesterday's dose with **Clarity > diary > prompt** priority; backfills overnight outcome; writes today's suggestion to diary. `--new-pen` applies the new-pen rule.
 - `whoop_api_fetch.py` — incremental WHOOP refresh via `whoop-sdk` (4 endpoints, 7-day overlap cursor, dedup-merge by id/cycle_id, 429 backoff). `--full` forces backfill from 2025-04-09. Typical run ~4s.
 
 ## Tests
