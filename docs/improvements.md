@@ -37,4 +37,24 @@ Generated 2026-05-15 from architecture critique. Read this before proposing new 
 
 ## Status
 
-Section A complete (2026-05-15). B in progress: rules.py extraction and EOFError fix done; remaining items in priority order.
+Sections A and most of B complete (2026-05-15). Remaining B items (B8/B9/B10) deferred -- low value-for-effort given current single-user manual-nightly workflow.
+
+## E. Next session priorities
+
+1. **GitHub integration**
+   - Decision: public or private repo
+   - If public: do C13 (sanitize CLAUDE.md -- name, diagnosis date, email) BEFORE first push
+   - If private: just push as-is
+   - Steps: `gh` CLI not installed -> create repo via web UI, then `git remote add origin <url>` + `git push -u origin master`
+
+2. **Automation roadmap toward phone-driven nightly suggestion**
+   - End goal: trigger from phone (Telegram bot), proactive 21:30 nightly push with tonight's suggestion
+   - Stack: Python + python-telegram-bot, hosted on Hetzner Frankfurt (EU/GDPR) or Raspberry Pi at home
+   - Phased plan (~6-9h total):
+     - Phase 1 (~1h): `--dose N` CLI flag on dexcom_fetch; remove remaining input() prompts; make scripts cron-friendly
+     - Phase 2 (~3-4h): Telegram bot with `/today`, `/took N`, `/stats` commands
+     - Phase 3 (~30m): cron 21:30 -> bot DMs the suggestion proactively
+     - Phase 4 (~2-4h, optional): Playwright nightly Clarity CSV export (gnarly; cached storage_state, monthly MFA refresh)
+     - Phase 5 (optional): web dashboard for history graphs
+   - Hard blocker for true end-to-end: Dexcom Share API has no insulin events; Clarity export is manual. Phase 4 solves it via browser automation OR user accepts periodic manual re-export.
+   - Risks: MFA on Clarity, Dexcom ToS on automated access, UI brittleness, server uptime, Telegram chat-id whitelist for security
