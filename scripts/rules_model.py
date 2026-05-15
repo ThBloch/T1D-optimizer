@@ -19,8 +19,6 @@ from whoop_loader import load_whoop
 from dexcom_loader import load_dexcom
 from rules import thomas_rules
 
-BASE      = 'D:/claude/t1d/data'
-DIAGNOSIS = date(2025, 4, 9)
 HYPO_THR  = 4.0
 TGT_LO, TGT_HI = 4.0, 10.0   # user's TIR range
 

@@ -8,8 +8,6 @@ from collections import defaultdict
 from whoop_loader import load_whoop
 from dexcom_loader import load_dexcom
 
-BASE      = 'D:/claude/t1d/data'
-DIAGNOSIS = date(2025, 4, 9)
 TGT_LO, TGT_HI = 5.0, 8.0
 HYPO_THR, HYPER_THR = 4.0, 10.0
 

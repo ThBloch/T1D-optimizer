@@ -4,6 +4,7 @@ import os
 import sys
 import time
 from datetime import datetime, date, timedelta, timezone
+from pathlib import Path
 from whoop_sdk import Whoop
 from requests.exceptions import HTTPError
 
@@ -14,7 +15,7 @@ OVERLAP_DAYS = 7  # re-fetch window to catch updated in-progress records
 
 end_date = (date.today() + timedelta(days=1)).isoformat() + "T00:00:00.000Z"
 fetched_at = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-output_dir = "D:/claude/t1d/data/whoop_api"
+output_dir = str(Path(__file__).resolve().parent.parent / 'data' / 'whoop_api')
 
 force_full = "--full" in sys.argv
 

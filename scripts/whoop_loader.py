@@ -3,7 +3,7 @@ import json
 from datetime import datetime, timedelta
 from pathlib import Path
 
-API_DIR = Path('D:/claude/t1d/data/whoop_api')
+API_DIR = Path(__file__).resolve().parent.parent / 'data' / 'whoop_api'
 
 def _parse_offset(s):
     if s == 'Z':

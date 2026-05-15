@@ -9,8 +9,9 @@ Bolus noise analysis:
 import csv, glob, os, math
 from datetime import datetime, timedelta, date
 from collections import defaultdict
+from pathlib import Path
 
-BASE = 'D:/claude/t1d/data'
+BASE = str(Path(__file__).resolve().parent.parent / 'data')
 DIAGNOSIS = date(2025, 4, 9)
 TGT_LO, TGT_HI = 5.0, 8.0
 HYPO_THR = 4.0

@@ -10,8 +10,6 @@ from collections import defaultdict
 from whoop_loader import load_whoop
 from dexcom_loader import load_dexcom
 
-BASE      = 'D:/claude/t1d/data'
-DIAGNOSIS = date(2025, 4, 9)
 OVN_START = 22   # overnight window start hour
 OVN_END   = 7    # overnight window end hour (next day)
 HYPO_THR  = 4.0

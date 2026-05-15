@@ -27,8 +27,6 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.inspection import permutation_importance
 
-BASE      = 'D:/claude/t1d/data'
-DIAGNOSIS = date(2025, 4, 9)
 TGT_LO, TGT_HI = 5.0, 8.0
 HYPO_THR  = 4.0
 

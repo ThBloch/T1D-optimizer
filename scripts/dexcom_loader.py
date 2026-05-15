@@ -6,20 +6,21 @@ Danish locale, mmol/L with comma decimals). Imported by all analysis scripts.
 import csv, glob, os
 from datetime import datetime, date
 from collections import defaultdict
+from pathlib import Path
 
-BASE      = 'D:/claude/t1d/data'
+DATA_DIR  = Path(__file__).resolve().parent.parent / 'data'
 DIAGNOSIS = date(2025, 4, 9)
 
 
 def load_dexcom():
-    """Read all Clarity_*.csv exports under BASE and return three structures.
+    """Read all Clarity_*.csv exports under DATA_DIR and return three structures.
 
     Returns:
       glucose_list : sorted [(datetime, mmol/L), ...]
       basal_list   : sorted [(injection_dt, date, units), ...] one entry per date
       bolus_by_date: defaultdict[date -> total_units]
     """
-    files = sorted(glob.glob(os.path.join(BASE, 'Clarity_*.csv')))
+    files = sorted(glob.glob(str(DATA_DIR / 'Clarity_*.csv')))
     glucose  = {}
     basal_ts = {}
     bolus_ts = set()

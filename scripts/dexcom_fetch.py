@@ -11,8 +11,8 @@ from pathlib import Path
 from rules import thomas_rules
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
-BASE       = Path('D:/claude/t1d')
-CREDS_FILE = BASE / 'dexcom_creds.json'
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+CREDS_FILE   = PROJECT_ROOT / 'dexcom_creds.json'
 
 HYPO_THR  = 4.0
 TGT_LO    = 4.0   # TIR lower bound (matches rules_model.py)
