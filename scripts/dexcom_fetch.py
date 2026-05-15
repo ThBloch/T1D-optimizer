@@ -9,6 +9,8 @@ from datetime import datetime, timedelta, date
 from pathlib import Path
 
 from rules import thomas_rules
+from dose_diary import load_diary, save_diary, find_row, upsert_row, parse_dose, DIARY_PATH
+from whoop_loader import load_whoop
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -113,35 +115,61 @@ def run():
     print(f"  Readings in window     : {stats['n_readings']}")
     print(f"\n{trend_note}")
 
-    print()
-    try:
-        dose_str = input("Yesterday's basal dose (u): ").strip()
-    except EOFError:
-        print("Non-interactive run -- skipping dose suggestion.")
-        return
-    try:
-        yesterday_dose = float(dose_str)
-    except ValueError:
-        print("Invalid input. Cannot compute suggestion.")
-        return
+    diary = load_diary()
+    upsert_row(diary, {
+        'date':        str(yesterday),
+        'fasting':     stats['fasting'],
+        'hypo_events': stats['hypo_events'],
+        'tir_pct':     stats['tir'],
+    })
+
+    yesterday_row = find_row(diary, yesterday)
+    yesterday_dose = parse_dose(yesterday_row.get('dose_u'))
+
+    if yesterday_dose is None:
+        print()
+        try:
+            dose_str = input(f"Dose injected on {yesterday} (u): ").strip()
+        except EOFError:
+            print("Non-interactive run, no anchor dose on file -- skipping suggestion.")
+            save_diary(diary)
+            return
+        yesterday_dose = parse_dose(dose_str)
+        if yesterday_dose is None:
+            print("Invalid input. Diary saved without anchor; suggestion skipped.")
+            save_diary(diary)
+            return
+        yesterday_row['dose_u'] = yesterday_dose
 
     try:
-        s1_str = input("Today's WHOOP strain (s1) [Enter to skip]: ").strip()
-    except EOFError:
-        s1_str = ''
-    s1 = float(s1_str) if s1_str else None
+        whoop = load_whoop()
+        today_strain = (whoop.get(today) or {}).get('strain')
+    except FileNotFoundError:
+        today_strain = None
+    if today_strain is None:
+        print(f"\n  Today's WHOOP strain not yet on file (in-progress cycle).")
 
     dose, reasoning = thomas_rules(
         yesterday_dose=yesterday_dose,
         fasting=stats['fasting'],
         hypo_events=stats['hypo_events'],
-        s1=s1,
+        s1=today_strain,
     )
 
+    upsert_row(diary, {
+        'date':        str(today),
+        'strain_s1':   today_strain if today_strain is not None else '',
+        'suggested_u': dose,
+        'reasoning':   ' | '.join(reasoning),
+    })
+    save_diary(diary)
+
     print(f"\n--- Tonight's suggestion ---")
-    print(f"  Suggested dose: {dose}u")
+    print(f"  Yesterday's dose: {yesterday_dose:.0f}u (from diary)")
+    print(f"  Suggested dose : {dose}u")
     for r in reasoning:
         print(f"    * {r}")
+    print(f"\n  Diary: {DIARY_PATH}")
     print()
 
 if __name__ == '__main__':
