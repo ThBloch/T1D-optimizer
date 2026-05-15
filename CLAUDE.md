@@ -42,6 +42,13 @@ output/                   generated reports (not committed)
 - WHOOP in-progress cycle dating: indexed under start date, so `today_s1` lookup often returns None at dose time — fetch live via API when needed
 - WHOOP strain freshness: `score.strain` only updates on WHOOP app sync — check `updated_at`
 
+## Working preferences (token-saving)
+- Default model: Sonnet 4.6. Haiku for renames/format/lookup. Opus only for cross-file design or critique.
+- No preamble, no trailing summaries, no unsolicited suggestions.
+- Reference file paths instead of pasting file contents.
+- Prefer Grep/Read/Glob over spawning Agents. Spawn only for genuinely open-ended multi-step research.
+- Backlog at `docs/improvements.md` - read before proposing new refactors.
+
 ## Do not use
 `docs/analyze.py`, `docs/recalibrate.py`, `docs/REFERENCE.md` — all superseded.
 
