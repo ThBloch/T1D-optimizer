@@ -11,6 +11,7 @@ from pathlib import Path
 from rules import thomas_rules
 from dose_diary import load_diary, save_diary, find_row, upsert_row, parse_dose, DIARY_PATH
 from whoop_loader import load_whoop
+from dexcom_loader import load_dexcom
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -123,9 +124,28 @@ def run():
         'tir_pct':     stats['tir'],
     })
 
-    yesterday_row = find_row(diary, yesterday)
-    yesterday_dose = parse_dose(yesterday_row.get('dose_u'))
+    yesterday_dose = None
+    dose_source = None
 
+    # Priority 1: Clarity CSV (authoritative)
+    try:
+        _, basal_list, _ = load_dexcom()
+        clarity_dose = next((u for _, d, u in basal_list if d == yesterday), None)
+        if clarity_dose is not None:
+            yesterday_dose = clarity_dose
+            dose_source = 'Clarity'
+            find_row(diary, yesterday)['dose_u'] = clarity_dose
+    except Exception as e:
+        print(f"  Clarity lookup failed: {e}")
+
+    # Priority 2: diary (catches recent doses not yet in Clarity export)
+    if yesterday_dose is None:
+        diary_dose = parse_dose(find_row(diary, yesterday).get('dose_u'))
+        if diary_dose is not None:
+            yesterday_dose = diary_dose
+            dose_source = 'diary'
+
+    # Priority 3: prompt (first run, no record anywhere)
     if yesterday_dose is None:
         print()
         try:
@@ -139,7 +159,8 @@ def run():
             print("Invalid input. Diary saved without anchor; suggestion skipped.")
             save_diary(diary)
             return
-        yesterday_row['dose_u'] = yesterday_dose
+        find_row(diary, yesterday)['dose_u'] = yesterday_dose
+        dose_source = 'manual'
 
     try:
         whoop = load_whoop()
@@ -165,7 +186,7 @@ def run():
     save_diary(diary)
 
     print(f"\n--- Tonight's suggestion ---")
-    print(f"  Yesterday's dose: {yesterday_dose:.0f}u (from diary)")
+    print(f"  Yesterday's dose: {yesterday_dose:.0f}u (from {dose_source})")
     print(f"  Suggested dose : {dose}u")
     for r in reasoning:
         print(f"    * {r}")
