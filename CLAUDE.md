@@ -30,7 +30,7 @@ output/                   generated reports (not committed)
 - `dexcom_loader.py` — shared Clarity CSV loader; returns `(glucose_list, basal_list, bolus_by_date)`. Warns at load time if any rows fail to parse.
 - `whoop_loader.py` — shared WHOOP loader; reads `data/whoop_api/*.json` → `{date: {strain, recovery, hrv, rhr, sleep_perf}}`
 - `dose_diary.py` — read/upsert `data/doses.csv` (one row per dose-night)
-- `dexcom_fetch.py` — daily CGM fetch via `pydexcom`; anchors yesterday's dose with **Clarity > diary > prompt** priority; backfills overnight outcome; writes today's suggestion to diary. `--new-pen` applies the new-pen rule.
+- `dexcom_fetch.py` — daily CGM fetch via `pydexcom`; anchors yesterday's dose with **Clarity > diary > prompt** priority; backfills overnight outcome; writes today's suggestion to diary. Flags: `--new-pen` (applies new-pen rule), `--no-hypo` (override CGM-detected hypos as sensor noise).
 - `whoop_api_fetch.py` — incremental WHOOP refresh via `whoop-sdk` (4 endpoints, 7-day overlap cursor, dedup-merge by id/cycle_id, 429 backoff). `--full` forces backfill from 2025-04-09. Typical run ~4s.
 
 ## Tests

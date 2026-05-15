@@ -171,13 +171,17 @@ def run():
         print(f"\n  Today's WHOOP strain not yet on file (in-progress cycle).")
 
     new_pen = '--new-pen' in sys.argv
+    no_hypo = '--no-hypo' in sys.argv
+    effective_hypos = 0 if no_hypo else stats['hypo_events']
     dose, reasoning = thomas_rules(
         yesterday_dose=yesterday_dose,
         fasting=stats['fasting'],
-        hypo_events=stats['hypo_events'],
+        hypo_events=effective_hypos,
         s1=today_strain,
         new_pen=new_pen,
     )
+    if no_hypo and stats['hypo_events'] > 0:
+        reasoning.insert(0, f"Hypo override: ignoring {stats['hypo_events']} CGM-detected hypo(s) (sensor noise)")
 
     upsert_row(diary, {
         'date':        str(today),
