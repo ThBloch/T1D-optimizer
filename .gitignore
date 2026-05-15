@@ -1,6 +1,9 @@
 # Raw health data — never commit
 data/
 
+# Credentials — never commit
+dexcom_creds.json
+
 # Python cache
 __pycache__/
 *.pyc
