@@ -8,6 +8,7 @@ import csv, glob, os, math
 from datetime import datetime, timedelta, date
 from collections import defaultdict
 from whoop_loader import load_whoop
+from dexcom_loader import load_dexcom
 
 BASE      = 'D:/claude/t1d/data'
 DIAGNOSIS = date(2025, 4, 9)
@@ -17,68 +18,6 @@ HYPO_THR  = 4.0
 HYPER_THR = 10.0
 TGT_LO    = 5.0
 TGT_HI    = 8.0
-
-# ── LOAD DEXCOM ───────────────────────────────────────────────────────────────
-def load_dexcom():
-    files = sorted(glob.glob(os.path.join(BASE, 'Clarity_*.csv')))
-    glucose  = {}   # datetime -> mmol/L
-    basal_ts = {}   # datetime -> units (deduplicated by exact timestamp)
-    bolus_ts = set() # set of (datetime, units) tuples
-
-    for path in files:
-        with open(path, 'r', encoding='utf-8') as f:
-            for row in csv.reader(f, delimiter=';'):
-                if len(row) < 9:
-                    continue
-                ts    = row[1].strip().strip('"')
-                etype = row[2].strip().strip('"')
-                esub  = row[3].strip().strip('"')
-                gval  = row[7].strip().strip('"')
-                ival  = row[8].strip().strip('"')
-                if not ts or 'T' not in ts:
-                    continue
-                try:
-                    dt = datetime.strptime(ts, '%Y-%m-%dT%H:%M:%S')
-                except ValueError:
-                    continue
-                if dt.date() < DIAGNOSIS:
-                    continue
-
-                if etype == 'Estimeret glukoseværdi' and gval:
-                    try:
-                        glucose[dt] = float(gval.replace(',', '.'))
-                    except ValueError:
-                        pass
-
-                if etype == 'Insulin' and ival:
-                    try:
-                        units = float(ival.replace(',', '.'))
-                    except ValueError:
-                        continue
-                    if 'Lang' in esub:
-                        # key by exact timestamp to deduplicate across overlapping exports
-                        if dt not in basal_ts:
-                            basal_ts[dt] = units
-                    elif 'Hurtig' in esub:
-                        bolus_ts.add((dt, units))
-
-    # Aggregate basal by date (sum same-date timestamps, keep earliest as representative)
-    basal_by_date = {}
-    for dt, units in sorted(basal_ts.items()):
-        d = dt.date()
-        if d not in basal_by_date:
-            basal_by_date[d] = [dt, units]
-        else:
-            basal_by_date[d][1] += units
-
-    # Aggregate bolus by date (deduplicated set of (dt, units))
-    bolus = defaultdict(float)
-    for dt, units in bolus_ts:
-        bolus[dt.date()] += units
-
-    glucose_list = sorted(glucose.items())
-    basal_list   = sorted([(v[0], d, v[1]) for d, v in basal_by_date.items()])
-    return glucose_list, basal_list, bolus
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────
 def rolling_avg(d, n, index, key='strain'):

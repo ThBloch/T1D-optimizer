@@ -16,6 +16,7 @@ import csv, glob, os, math
 from datetime import datetime, timedelta, date
 from collections import defaultdict
 from whoop_loader import load_whoop
+from dexcom_loader import load_dexcom
 
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
@@ -32,41 +33,6 @@ TGT_LO, TGT_HI = 5.0, 8.0
 HYPO_THR  = 4.0
 
 # ── DATA LOADING ───────────────────────────────────────────────────────────────
-def load_dexcom():
-    files = sorted(glob.glob(os.path.join(BASE, 'Clarity_*.csv')))
-    glucose, basal_ts, bolus_ts = {}, {}, set()
-    for path in files:
-        with open(path, 'r', encoding='utf-8') as f:
-            for row in csv.reader(f, delimiter=';'):
-                if len(row) < 9: continue
-                ts=row[1].strip().strip('"'); etype=row[2].strip().strip('"')
-                esub=row[3].strip().strip('"'); gval=row[7].strip().strip('"')
-                ival=row[8].strip().strip('"')
-                if not ts or 'T' not in ts: continue
-                try: dt=datetime.strptime(ts,'%Y-%m-%dT%H:%M:%S')
-                except: continue
-                if dt.date()<DIAGNOSIS: continue
-                if etype=='Estimeret glukoseværdi' and gval:
-                    try: glucose[dt]=float(gval.replace(',','.'))
-                    except: pass
-                if etype=='Insulin' and ival:
-                    try: u=float(ival.replace(',','.'))
-                    except: continue
-                    if 'Lang' in esub:
-                        if dt not in basal_ts: basal_ts[dt]=u
-                    elif 'Hurtig' in esub: bolus_ts.add((dt,u))
-    basal_by_date={}
-    for dt,u in sorted(basal_ts.items()):
-        d=dt.date()
-        if d not in basal_by_date: basal_by_date[d]=[dt,u]
-        else: basal_by_date[d][1]+=u
-    bolus=defaultdict(float)
-    bolus_dedup={}
-    for dt,u in bolus_ts:
-        if dt not in bolus_dedup: bolus_dedup[dt]=u
-    for dt,u in bolus_dedup.items(): bolus[dt.date()]+=u
-    return sorted(glucose.items()), sorted([(v[0],d,v[1]) for d,v in basal_by_date.items()]), bolus
-
 def rolling_avg(d, n, idx):
     v=[idx[d-timedelta(days=i)]['strain'] for i in range(n)
        if (d-timedelta(days=i)) in idx and idx[d-timedelta(days=i)]['strain'] is not None]

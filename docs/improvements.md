@@ -11,7 +11,7 @@ Generated 2026-05-15 from architecture critique. Read this before proposing new 
 
 ## B. Code hardening
 
-- [ ] Extract `scripts/dexcom_loader.py` — `load_dexcom()` is duplicated 4x (basal_analysis, rules_model, ml_model, predictor_test)
+- [x] Extract `scripts/dexcom_loader.py` — unifies the 4x duplicate `load_dexcom()`; ml_model's redundant dt-only bolus dedup dropped (set-based dedup is sufficient)
 - [x] Extract `scripts/rules.py` — single source of truth for `thomas_rules()`; ASCII-only, parameterized thresholds preserved for ML
 - [ ] Add `tests/test_rules.py` — ~10 pytest cases covering hypo paths, fasting tiers, activity stacking, clamp boundaries
 - [ ] Persistent dose diary `data/doses.csv` — append-only after each `dexcom_fetch` run; eliminates the interactive `input()` prompt that broke our headless run

@@ -6,64 +6,12 @@ import csv, glob, os, math
 from datetime import datetime, timedelta, date
 from collections import defaultdict
 from whoop_loader import load_whoop
+from dexcom_loader import load_dexcom
 
 BASE      = 'D:/claude/t1d/data'
 DIAGNOSIS = date(2025, 4, 9)
 TGT_LO, TGT_HI = 5.0, 8.0
 HYPO_THR, HYPER_THR = 4.0, 10.0
-
-def load_dexcom():
-    files = sorted(glob.glob(os.path.join(BASE, 'Clarity_*.csv')))
-    glucose, basal_ts, bolus_ts = {}, {}, set()
-    for path in files:
-        with open(path, 'r', encoding='utf-8') as f:
-            for row in csv.reader(f, delimiter=';'):
-                if len(row) < 9:
-                    continue
-                ts    = row[1].strip().strip('"')
-                etype = row[2].strip().strip('"')
-                esub  = row[3].strip().strip('"')
-                gval  = row[7].strip().strip('"')
-                ival  = row[8].strip().strip('"')
-                if not ts or 'T' not in ts:
-                    continue
-                try:
-                    dt = datetime.strptime(ts, '%Y-%m-%dT%H:%M:%S')
-                except Exception:
-                    continue
-                if dt.date() < DIAGNOSIS:
-                    continue
-                if etype == 'Estimeret glukoseværdi' and gval:
-                    try:
-                        glucose[dt] = float(gval.replace(',', '.'))
-                    except Exception:
-                        pass
-                if etype == 'Insulin' and ival:
-                    try:
-                        u = float(ival.replace(',', '.'))
-                    except Exception:
-                        continue
-                    if 'Lang' in esub:
-                        if dt not in basal_ts:
-                            basal_ts[dt] = u
-                    elif 'Hurtig' in esub:
-                        bolus_ts.add((dt, u))
-
-    basal_by_date = {}
-    for dt, u in sorted(basal_ts.items()):
-        d = dt.date()
-        if d not in basal_by_date:
-            basal_by_date[d] = [dt, u]
-        else:
-            basal_by_date[d][1] += u
-
-    bolus = defaultdict(float)
-    for dt, u in bolus_ts:
-        bolus[dt.date()] += u
-
-    return (sorted(glucose.items()),
-            sorted([(v[0], d, v[1]) for d, v in basal_by_date.items()]),
-            bolus)
 
 def rolling_avg(d, n, idx):
     v = [idx[d - timedelta(days=i)]['strain']

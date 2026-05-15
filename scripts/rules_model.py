@@ -16,43 +16,13 @@ from sklearn.tree import DecisionTreeRegressor, export_text
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_absolute_error
 from whoop_loader import load_whoop
+from dexcom_loader import load_dexcom
 from rules import thomas_rules
 
 BASE      = 'D:/claude/t1d/data'
 DIAGNOSIS = date(2025, 4, 9)
 HYPO_THR  = 4.0
 TGT_LO, TGT_HI = 4.0, 10.0   # user's TIR range
-
-# ── LOADERS (same as basal_analysis.py) ───────────────────────────────────────
-def load_dexcom():
-    files = sorted(glob.glob(os.path.join(BASE, 'Clarity_*.csv')))
-    glucose, basal_ts, bolus_ts = {}, {}, set()
-    for path in files:
-        with open(path, 'r', encoding='utf-8') as f:
-            for row in csv.reader(f, delimiter=';'):
-                if len(row) < 9: continue
-                ts=row[1].strip().strip('"'); etype=row[2].strip().strip('"')
-                esub=row[3].strip().strip('"'); gval=row[7].strip().strip('"')
-                ival=row[8].strip().strip('"')
-                if not ts or 'T' not in ts: continue
-                try: dt=datetime.strptime(ts,'%Y-%m-%dT%H:%M:%S')
-                except: continue
-                if dt.date()<DIAGNOSIS: continue
-                if etype=='Estimeret glukoseværdi' and gval:
-                    try: glucose[dt]=float(gval.replace(',','.'))
-                    except: pass
-                if etype=='Insulin' and ival:
-                    try: u=float(ival.replace(',','.'))
-                    except: continue
-                    if 'Lang' in esub:
-                        if dt not in basal_ts: basal_ts[dt]=u
-                    elif 'Hurtig' in esub: bolus_ts.add((dt,u))
-    basal_by_date={}
-    for dt,u in sorted(basal_ts.items()):
-        d=dt.date()
-        if d not in basal_by_date: basal_by_date[d]=[dt,u]
-        else: basal_by_date[d][1]+=u
-    return sorted(glucose.items()), sorted([(v[0],d,v[1]) for d,v in basal_by_date.items()])
 
 def overnight_stats(inj_dt, glucose_list):
     end=datetime.combine(inj_dt.date()+timedelta(days=1),datetime.min.time().replace(hour=7))
@@ -81,7 +51,7 @@ def overnight_stats(inj_dt, glucose_list):
     }
 
 # ── BUILD NIGHTLY DATASET ──────────────────────────────────────────────────────
-glucose_list, basal_list = load_dexcom()
+glucose_list, basal_list, _ = load_dexcom()
 strain_idx = load_whoop()
 
 nights = []
