@@ -161,8 +161,8 @@ for label, grp in [('Rules ≈ actual (±1u)', match),
 # ── ML: DECISION TREE TO LEARN OPTIMIZED THRESHOLDS ───────────────────────────
 print(f'\n{"="*70}')
 print('DECISION TREE — LEARNING THRESHOLDS FROM DATA')
-print('="*70 + note: target = actual dose used (learns user behaviour)')
-print('="'*35)
+print('Note: target = actual dose used (learns user behaviour)')
+print('='*70)
 
 # Features: prev_fasting, prev_hypo_events, s1 (today), yesterday_dose
 # Target: today's actual dose

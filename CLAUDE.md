@@ -49,8 +49,5 @@ output/                   generated reports (not committed)
 - Prefer Grep/Read/Glob over spawning Agents. Spawn only for genuinely open-ended multi-step research.
 - Backlog at `docs/improvements.md` - read before proposing new refactors.
 
-## Do not use
-`docs/analyze.py`, `docs/recalibrate.py`, `docs/REFERENCE.md` — all superseded.
-
 ## Full model context
 See memory file or `docs/architecture.md`.

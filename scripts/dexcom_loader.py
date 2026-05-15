@@ -24,6 +24,7 @@ def load_dexcom():
     glucose  = {}
     basal_ts = {}
     bolus_ts = set()
+    skipped_parse = 0
 
     for path in files:
         with open(path, 'r', encoding='utf-8') as f:
@@ -40,6 +41,7 @@ def load_dexcom():
                 try:
                     dt = datetime.strptime(ts, '%Y-%m-%dT%H:%M:%S')
                 except ValueError:
+                    skipped_parse += 1
                     continue
                 if dt.date() < DIAGNOSIS:
                     continue
@@ -48,18 +50,23 @@ def load_dexcom():
                     try:
                         glucose[dt] = float(gval.replace(',', '.'))
                     except ValueError:
-                        pass
+                        skipped_parse += 1
 
                 if etype == 'Insulin' and ival:
                     try:
                         units = float(ival.replace(',', '.'))
                     except ValueError:
+                        skipped_parse += 1
                         continue
                     if 'Lang' in esub:
                         if dt not in basal_ts:
                             basal_ts[dt] = units
                     elif 'Hurtig' in esub:
                         bolus_ts.add((dt, units))
+
+    if skipped_parse:
+        print(f'[dexcom_loader] skipped {skipped_parse} rows due to parse errors '
+              f'(check Clarity export locale/format)')
 
     basal_by_date = {}
     for dt, units in sorted(basal_ts.items()):
