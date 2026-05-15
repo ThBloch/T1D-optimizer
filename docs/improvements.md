@@ -13,7 +13,7 @@ Generated 2026-05-15 from architecture critique. Read this before proposing new 
 
 - [x] Extract `scripts/dexcom_loader.py` — unifies the 4x duplicate `load_dexcom()`; ml_model's redundant dt-only bolus dedup dropped (set-based dedup is sufficient)
 - [x] Extract `scripts/rules.py` — single source of truth for `thomas_rules()`; ASCII-only, parameterized thresholds preserved for ML
-- [ ] Add `tests/test_rules.py` — ~10 pytest cases covering hypo paths, fasting tiers, activity stacking, clamp boundaries
+- [x] Add `tests/test_rules.py` — 18 unittest cases (fasting tiers + boundaries, hypo priority, activity stacking, clamp bounds, None inputs, threshold parameterization). Run: `py -X utf8 tests/test_rules.py`. Note: stdlib unittest, not pytest, because pytest isn't installed.
 - [ ] Persistent dose diary `data/doses.csv` — append-only after each `dexcom_fetch` run; eliminates the interactive `input()` prompt that broke our headless run
 - [ ] Portable paths — replace `BASE = 'D:/claude/t1d/data'` with `Path(__file__).resolve().parent.parent / 'data'`
 - [ ] Replace silent `except: pass` in CSV parsing with a skipped-row counter + load-time log
