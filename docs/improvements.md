@@ -41,7 +41,14 @@ Sections A and most of B complete (2026-05-15). Remaining B items (B8/B9/B10) de
 
 ## E. Next session priorities
 
-1. **GitHub integration**
+1. **Refine strain-based rule (currently coarse)**
+   - Today's rule: `s1 >= 12.0 -> -2u`, else 0u. Only two levels of a six-level spectrum.
+   - Wanted: granular adjustment across the full range -- `+3, +2, +1, 0, -1, -2`. Define s1 thresholds for each level.
+   - Direction is a clinical decision: low strain typically -> higher insulin resistance (+adj), high strain -> higher insulin sensitivity (-adj). Confirm with Thomas before encoding.
+   - Suggested approach: bin historical nights by s1 and look at TIR / fasting outcomes per dose, infer reasonable thresholds; then encode in `rules.py`, add ~6 unittest cases, document in `decisions-log.md`.
+   - Also: handle the in-progress-cycle indexing quirk so today's strain is found at dose time (currently indexed under cycle start date, often yesterday).
+
+2. **GitHub integration**
    - Decision: public or private repo
    - If public: do C13 (sanitize CLAUDE.md -- name, diagnosis date, email) BEFORE first push
    - If private: just push as-is
