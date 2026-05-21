@@ -51,12 +51,9 @@ output/                   generated reports (not committed)
 - WHOOP strain freshness: `score.strain` only updates on WHOOP app sync — check `updated_at`
 - Dose diary `data/doses.csv` is gitignored (under `data/`); Clarity-derived dose backfills it automatically when present
 
-## Working preferences (token-saving)
-- Default model: Sonnet 4.6. Haiku for renames/format/lookup. Opus only for cross-file design or critique.
-- No preamble, no trailing summaries, no unsolicited suggestions.
+## Working preferences
+- Read `docs/improvements.md` before proposing new refactors.
 - Reference file paths instead of pasting file contents.
-- Prefer Grep/Read/Glob over spawning Agents. Spawn only for genuinely open-ended multi-step research.
-- Backlog at `docs/improvements.md` - read before proposing new refactors.
 
 ## Full model context
 See memory file or `docs/architecture.md`.
