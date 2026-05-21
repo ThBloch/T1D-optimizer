@@ -1,0 +1,4 @@
+# Auto-detect text files, normalize line endings on commit (LF in repo).
+# Working-tree endings follow each user's core.autocrlf, but the repo
+# canonical is LF regardless of platform.
+* text=auto
