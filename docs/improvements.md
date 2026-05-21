@@ -16,7 +16,13 @@ Read this before proposing new refactors.
 
 ## C. Privacy / publishing
 
-- [ ] C1. Sanitize CLAUDE.md before public push - contains full name, diagnosis date, email. Or keep repo private. (blocks: E2)
+- [ ] C1. Sanitize source files before public push.
+  - Leak surface (6 locations): `CLAUDE.md` L3/35, `scripts/basal_analysis.py` L2/138, `scripts/ml_model.py` L2, `scripts/whoop_api_fetch.py` L13 (`DIAGNOSIS_START` constant), `docs/architecture.md` L43.
+  - Contents leaked: full name "Thomas Bloch-Nielsen" + diagnosis date 2025-04-09.
+  - Original entry mentioned "email" - false alarm, not in any tracked file. `data/` already gitignored so no medical data leaks.
+  - Separate leak: git commit author identity (full name on every past commit). At public-migration time decide file-only sanitization (accept history names you) vs `git filter-repo` rewrite (anonymous public repo, destructive).
+  - Approach: replace "Thomas Bloch-Nielsen" with generic "T1D Basal Optimizer" framing in script headers / docstrings / CLAUDE.md; parameterize `DIAGNOSIS_START` as env var or local `config.json` (gitignored); same for any other personal constants.
+  - Not blocking current work. Blocks public path of E2 only.
 
 ---
 
@@ -27,10 +33,14 @@ Read this before proposing new refactors.
   - Clinical direction: low strain -> higher insulin resistance (+adj), high strain -> higher insulin sensitivity (-adj). Confirm with Thomas before encoding.
   - Approach: bin historical nights by s1, look at TIR / fasting outcomes per dose, infer thresholds, encode in `rules.py`, add ~6 unittest cases, document in `decisions-log.md`.
   - Also: handle in-progress-cycle indexing quirk so today's strain is found at dose time (currently indexed under cycle start date, often yesterday).
-- [ ] E2. GitHub integration - public or private repo decision. (blocked by: C1 if public)
-  - If public: do C1 first (sanitize CLAUDE.md - name, diagnosis date, email) BEFORE first push.
-  - If private: push as-is.
-  - Steps: `gh` CLI not installed -> create repo via web UI -> `git remote add origin <url>` -> `git push -u origin master`.
+- [ ] E2. GitHub publish - deferred until project is "share-ready" AND C1 done.
+  - Decision 2026-05-21: eventual aim is public, to help other T1D patients/builders. Not a priority now. "Better first" - improve model + automation before going public.
+  - Informal quality bar: E1 (strain rule), E10 (nighttime objective validated), at least E5 (Phase 1 automation) done so it's not a single-user manual tool.
+  - When ready, three paths:
+    1. Private push for backup only - skip C1, repo not discoverable. Cheap if backup is the main goal.
+    2. Public, real name in history - C1 + push. Standard for personal-portfolio repos.
+    3. Public, fully anonymous - C1 + `git filter-repo` to rewrite all past commit authors. Destructive, only if anonymity matters.
+  - Mechanics: `gh` CLI not installed -> create repo via web UI -> `git remote add origin <url>` -> `git push -u origin master`.
 - [-] E3. `/dose` slash command - thin orchestration wrapper around `dexcom_fetch.py`. Lives at `.claude/commands/dose.md`. (blocked by: E5)
   - Flow: ask new-pen + unmodeled factors (alcohol / late meal / illness / activity-not-in-WHOOP) -> run script -> if hypos detected, ask sensor-noise -> output terse `Tonight: Nu` + reasoning bullets + off-rules flags.
   - Format per global memory: `feedback_dose_recommendation`, `feedback_dose_unmodeled_factors`.

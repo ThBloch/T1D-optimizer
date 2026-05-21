@@ -31,3 +31,11 @@
 ## 2026-05-18 — Rolled back first `/dose` slash command draft
 **Decision:** Deleted the first `D:/claude/t1d/.claude/commands/dose.md` draft. `/dose` rebuild deferred until Phase 1 of the automation roadmap lands (`--dose N` flag on `dexcom_fetch.py`, removal of `input()` prompts).
 **Why:** The draft added an interactive orchestration layer (AskUserQuestion for new-pen, factors, sensor-noise) directly on top of the current interactive script. Phase 1 is removing script interactivity to make scripts cron-friendly for the Telegram path. Building `/dose` on the pre-Phase-1 script meant near-certain rewrite once Phase 1 ships. Cleaner to do Phase 1 first; `/dose` then becomes a ~20-line wrapper around a non-interactive `--dose N` invocation. Backlog entry moved here from `claude-setup/improvements.md` D1 to enforce the rule that project-specific work lives in the project's own backlog.
+
+## 2026-05-21 — GitHub strategy: defer public push until project is "share-ready"
+**Decision:** Repo stays local for now (no remote yet). Eventual aim is public, to help other T1D patients/builders. Gated on an informal quality bar - E1 (strain rule refinement), E10 (nighttime objective validation), at least E5 (Phase 1 automation) - plus C1 sanitization. Three migration paths logged in E2 for the eventual flip.
+**Why:** Thomas wants the tool shareable if it can help others, but the current state is a single-user manual workflow with a coarse strain rule and an outcome metric (TIR(5-8)) that may be reshaped by E10. Going public now would lock in shape decisions still in flux. Defer until the model + automation make this a real tool, not a notebook.
+
+## 2026-05-21 — C1 leak surface scoped accurately
+**Decision:** Rewrote C1 in `improvements.md` to list the actual 6 leak locations (CLAUDE.md L3/35, basal_analysis.py L2/138, ml_model.py L2, whoop_api_fetch.py L13, architecture.md L43) and dropped the "email" claim (not in any tracked file). Added a note that git commit author identity is a separate leak with its own file-only-vs-history-rewrite decision at public-migration time.
+**Why:** The original C1 entry said "CLAUDE.md ... email" - underscoped (missed scripts + architecture.md + the `DIAGNOSIS_START` constant) and inaccurate (no email anywhere in tree). Made it concrete so a future implementation pass knows exactly what to touch.
