@@ -33,14 +33,13 @@ Read this before proposing new refactors.
   - Clinical direction: low strain -> higher insulin resistance (+adj), high strain -> higher insulin sensitivity (-adj). Confirm with Thomas before encoding.
   - Approach: bin historical nights by s1, look at TIR / fasting outcomes per dose, infer thresholds, encode in `rules.py`, add ~6 unittest cases, document in `decisions-log.md`.
   - Also: handle in-progress-cycle indexing quirk so today's strain is found at dose time (currently indexed under cycle start date, often yesterday).
-- [ ] E2. GitHub publish - deferred until project is "share-ready" AND C1 done.
+- [ ] E2. GitHub publish - private backup done 2026-05-21; public migration deferred until "share-ready" AND C1 done.
   - Decision 2026-05-21: eventual aim is public, to help other T1D patients/builders. Not a priority now. "Better first" - improve model + automation before going public.
   - Informal quality bar: E1 (strain rule), E10 (nighttime objective validated), at least E5 (Phase 1 automation) done so it's not a single-user manual tool.
-  - When ready, three paths:
-    1. Private push for backup only - skip C1, repo not discoverable. Cheap if backup is the main goal.
-    2. Public, real name in history - C1 + push. Standard for personal-portfolio repos.
-    3. Public, fully anonymous - C1 + `git filter-repo` to rewrite all past commit authors. Destructive, only if anonymity matters.
-  - Mechanics: `gh` CLI not installed -> create repo via web UI -> `git remote add origin <url>` -> `git push -u origin master`.
+  - Status of the three migration paths:
+    1. [x] Private push for backup - done 2026-05-21. Repo at https://github.com/ThBloch/T1D-optimizer (private). Origin tracked, GCM credential cached.
+    2. [ ] Public, real name in history - requires C1 + flip visibility in GitHub Settings -> Danger Zone -> Change visibility. Standard for personal-portfolio repos.
+    3. [ ] Public, fully anonymous - requires C1 + `git filter-repo` rewrite of past commit authors. Destructive, only if anonymity matters more than convenience.
 - [-] E3. `/dose` slash command - thin orchestration wrapper around `dexcom_fetch.py`. Lives at `.claude/commands/dose.md`. (blocked by: E5)
   - Flow: ask new-pen + unmodeled factors (alcohol / late meal / illness / activity-not-in-WHOOP) -> run script -> if hypos detected, ask sensor-noise -> output terse `Tonight: Nu` + reasoning bullets + off-rules flags.
   - Format per global memory: `feedback_dose_recommendation`, `feedback_dose_unmodeled_factors`.
