@@ -51,9 +51,29 @@ output/                   generated reports (not committed)
 - WHOOP strain freshness: `score.strain` only updates on WHOOP app sync — check `updated_at`
 - Dose diary `data/doses.csv` is gitignored (under `data/`); Clarity-derived dose backfills it automatically when present
 
+## Decisions log
+Location: `docs/decisions-log.md`
+
+Format, rules, and when to write: `claude-setup/docs/decisions-log-conventions.md`.
+
+Session protocol:
+- Before proposing changes to `thomas_rules`, model parameters, data sources, scripts in `scripts/`, or the analysis approach, read `docs/decisions-log.md`. State which entries are relevant, or explicitly state "no relevant decisions" if none apply.
+- If a proposed change contradicts an `accepted` decision (e.g., re-adding s7 as a match variable, removing the hypo-correction exclusion), stop. Either surface the conflict for discussion, or write a superseding entry first.
+- Never silently contradict an accepted decision. Never edit a past entry's content - only its `Status` line, and only when superseding.
+
+The `decisions-log-reminder` hookify rule reminds at session end if `scripts/*.py` was edited; non-trivial changes should also produce a new entry in the log.
+
 ## Working preferences
 - Read `docs/improvements.md` before proposing new refactors.
 - Reference file paths instead of pasting file contents.
+
+## Compaction
+
+When compacting, preserve:
+- Scripts changed this session and the logic that changed
+- Dose rule changes and their reasoning (and whether they were added to decisions-log.md)
+- Test results and any failures
+- Current blockers and next actions
 
 ## Full model context
 See memory file or `docs/architecture.md`.
