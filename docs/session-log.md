@@ -29,3 +29,9 @@ Append one entry per session. Format:
 **Decided:** Nothing yet.
 **Blocked:** Nothing.
 **Next:** Commit CLAUDE.md + decisions-log.md formatting changes. Then pick next task from E1/E4/E5.
+
+## 2026-05-26
+**Changed:** `.claude/commands/t1d-status.md` created (new). `CLAUDE.md` Quick start updated with `/t1d-status` entry. `docs/improvements.md` E4 marked done. `hookify.decisions-log-reminder.local.md` - fix blocked by classifier (user to apply manually: change event to `file`, field to `file_path`).
+**Decided:** E4 implemented as single `py -c` one-liner (stdlib only). Script tested and output verified.
+**Blocked:** hookify rule fix needs manual edit.
+**Next:** E5 (cron-friendly scripts, unblocks E3/E6) or E1 (strain rule refinement).

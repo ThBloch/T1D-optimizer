@@ -45,7 +45,7 @@ Read this before proposing new refactors.
   - Format per global memory: `feedback_dose_recommendation`, `feedback_dose_unmodeled_factors`.
   - Why blocked: dose.md should consume `--dose N` flag and a non-interactive script. First draft rolled back - hit conflicts because it added interactivity that E5 is removing.
   - After E5, dose.md becomes ~20 lines (pure orchestration, no anchor-prompt handling). History in `decisions-log.md`.
-- [ ] E4. `/t1d-status` slash command - quick snapshot.
+- [x] E4. `/t1d-status` slash command - quick snapshot.
   - Shows: last Dexcom fetch timestamp, latest Clarity CSV date in `data/`, count of unchecked items in `docs/improvements.md`, days since last dose entry in `data/doses.csv`.
   - Path: `.claude/commands/t1d-status.md`. Effort ~15 min. Not blocked - good warmup task.
 - [ ] E5. Phase 1: cron-friendly scripts (~1h) - `--dose N` CLI flag on `dexcom_fetch`, remove remaining `input()` prompts. (blocks: E3, E6)

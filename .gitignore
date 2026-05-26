@@ -11,8 +11,12 @@ __pycache__/
 # Generated output
 output/
 
-# Claude Code project settings
-.claude/
+# Claude Code project settings (local/personal config)
+# Use .claude/* not .claude/ so negations for subdirs work
+.claude/*
+!.claude/commands/
+.claude/commands/*
+!.claude/commands/*.md
 
 # Superseded files (pre-API CSVs, old scripts)
 archive/

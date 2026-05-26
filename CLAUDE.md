@@ -11,6 +11,9 @@ py -X utf8 dexcom_fetch.py [--new-pen] [--no-hypo]    # live CGM + diary-anchore
 py -X utf8 whoop_api_fetch.py [--full]                # refresh WHOOP JSON cache (incremental by default)
 py -X utf8 tests/test_rules.py                        # 21 unit tests for thomas_rules (run from project root)
 ```
+```
+/t1d-status                                           # 4-line snapshot: fetch age, clarity date, backlog count, last dose
+```
 
 ## Structure
 ```
