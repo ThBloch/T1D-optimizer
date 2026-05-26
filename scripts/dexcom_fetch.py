@@ -4,7 +4,7 @@ Pulls last 24h from Dexcom Share API (no CSV export needed).
 Run: py -X utf8 dexcom_fetch.py
 """
 
-import json, getpass, sys
+import argparse, json, getpass
 from datetime import datetime, timedelta, date
 from pathlib import Path
 
@@ -83,6 +83,12 @@ def overnight_stats(readings, inj_date):
 
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 def run():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dose', type=float, default=None)
+    parser.add_argument('--new-pen', action='store_true')
+    parser.add_argument('--no-hypo', action='store_true')
+    args = parser.parse_args()
+
     today     = date.today()
     yesterday = today - timedelta(days=1)
 
@@ -145,22 +151,27 @@ def run():
             yesterday_dose = diary_dose
             dose_source = 'diary'
 
-    # Priority 3: prompt (first run, no record anywhere)
+    # Priority 3: --dose flag or interactive prompt (first run, no record anywhere)
     if yesterday_dose is None:
-        print()
-        try:
-            dose_str = input(f"Dose injected on {yesterday} (u): ").strip()
-        except EOFError:
-            print("Non-interactive run, no anchor dose on file -- skipping suggestion.")
-            save_diary(diary)
-            return
-        yesterday_dose = parse_dose(dose_str)
-        if yesterday_dose is None:
-            print("Invalid input. Diary saved without anchor; suggestion skipped.")
-            save_diary(diary)
-            return
-        find_row(diary, yesterday)['dose_u'] = yesterday_dose
-        dose_source = 'manual'
+        if args.dose is not None:
+            yesterday_dose = args.dose
+            find_row(diary, yesterday)['dose_u'] = yesterday_dose
+            dose_source = 'flag'
+        else:
+            print()
+            try:
+                dose_str = input(f"Dose injected on {yesterday} (u): ").strip()
+            except EOFError:
+                print("Non-interactive run, no anchor dose on file -- skipping suggestion.")
+                save_diary(diary)
+                return
+            yesterday_dose = parse_dose(dose_str)
+            if yesterday_dose is None:
+                print("Invalid input. Diary saved without anchor; suggestion skipped.")
+                save_diary(diary)
+                return
+            find_row(diary, yesterday)['dose_u'] = yesterday_dose
+            dose_source = 'manual'
 
     try:
         whoop = load_whoop()
@@ -170,8 +181,8 @@ def run():
     if today_strain is None:
         print(f"\n  Today's WHOOP strain not yet on file (in-progress cycle).")
 
-    new_pen = '--new-pen' in sys.argv
-    no_hypo = '--no-hypo' in sys.argv
+    new_pen = args.new_pen
+    no_hypo = args.no_hypo
     effective_hypos = 0 if no_hypo else stats['hypo_events']
     dose, reasoning = thomas_rules(
         yesterday_dose=yesterday_dose,

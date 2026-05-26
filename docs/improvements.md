@@ -40,7 +40,7 @@ Read this before proposing new refactors.
     1. [x] Private push for backup - done 2026-05-21. Repo at https://github.com/ThBloch/T1D-optimizer (private). Origin tracked, GCM credential cached.
     2. [ ] Public, real name in history - requires C1 + flip visibility in GitHub Settings -> Danger Zone -> Change visibility. Standard for personal-portfolio repos.
     3. [ ] Public, fully anonymous - requires C1 + `git filter-repo` rewrite of past commit authors. Destructive, only if anonymity matters more than convenience.
-- [-] E3. `/dose` slash command - thin orchestration wrapper around `dexcom_fetch.py`. Lives at `.claude/commands/dose.md`. (blocked by: E5)
+- [x] E3. `/dose` slash command - thin orchestration wrapper around `dexcom_fetch.py`. Lives at `.claude/commands/dose.md`. (blocked by: E5)
   - Flow: ask new-pen + unmodeled factors (alcohol / late meal / illness / activity-not-in-WHOOP) -> run script -> if hypos detected, ask sensor-noise -> output terse `Tonight: Nu` + reasoning bullets + off-rules flags.
   - Format per global memory: `feedback_dose_recommendation`, `feedback_dose_unmodeled_factors`.
   - Why blocked: dose.md should consume `--dose N` flag and a non-interactive script. First draft rolled back - hit conflicts because it added interactivity that E5 is removing.
@@ -48,7 +48,10 @@ Read this before proposing new refactors.
 - [x] E4. `/t1d-status` slash command - quick snapshot.
   - Shows: last Dexcom fetch timestamp, latest Clarity CSV date in `data/`, count of unchecked items in `docs/improvements.md`, days since last dose entry in `data/doses.csv`.
   - Path: `.claude/commands/t1d-status.md`. Effort ~15 min. Not blocked - good warmup task.
-- [ ] E5. Phase 1: cron-friendly scripts (~1h) - `--dose N` CLI flag on `dexcom_fetch`, remove remaining `input()` prompts. (blocks: E3, E6)
+- [x] E5. Phase 1: cron-friendly scripts (~1h) - `--dose N` CLI flag on `dexcom_fetch`, remove remaining `input()` prompts. (blocks: E3, E6)
+- [ ] E5b. `/session-done` slash command - one command to log session, commit, and push.
+  - Flow: summarize what changed this session (from conversation context) -> append dated entry to `docs/session-log.md` -> `git add` changed files -> commit with generated message -> push.
+  - Effort ~30 min. Not blocked.
 - [ ] E6. Phase 2: Telegram bot (~3-4h) - `python-telegram-bot` on Hetzner Frankfurt (EU/GDPR) or Raspberry Pi. Commands: `/today`, `/took N`, `/stats`. (blocked by: E5) (blocks: E7)
 - [ ] E7. Phase 3: nightly proactive push (~30m) - cron 21:30 -> bot DMs tonight's suggestion. (blocked by: E6)
   - Soft dep: needs fresh Clarity data. Either E8 or manual re-export.

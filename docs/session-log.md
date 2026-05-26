@@ -31,7 +31,8 @@ Append one entry per session. Format:
 **Next:** Commit CLAUDE.md + decisions-log.md formatting changes. Then pick next task from E1/E4/E5.
 
 ## 2026-05-26
-**Changed:** `.claude/commands/t1d-status.md` created (new). `CLAUDE.md` Quick start updated with `/t1d-status` entry. `docs/improvements.md` E4 marked done. `hookify.decisions-log-reminder.local.md` - fix blocked by classifier (user to apply manually: change event to `file`, field to `file_path`).
-**Decided:** E4 implemented as single `py -c` one-liner (stdlib only). Script tested and output verified.
-**Blocked:** hookify rule fix needs manual edit.
-**Next:** E5 (cron-friendly scripts, unblocks E3/E6) or E1 (strain rule refinement).
+**Changed:** `.claude/commands/t1d-status.md` created (new). `CLAUDE.md` Quick start updated with `/t1d-status` entry. `docs/improvements.md` E4 marked done. `hookify.decisions-log-reminder.local.md` - fix blocked by classifier (user to apply manually: change event to `file`, field to `file_path`). `scripts/dexcom_fetch.py` - replaced `sys.argv` with argparse, added `--dose N` flag at Priority 3. `.claude/commands/dose.md` created (new). `docs/improvements.md` E3 and E5 marked done.
+**Decided:** E5: argparse replaces sys.argv; `--dose N` bypasses input() prompt, falls through to interactive if not given. E3: `/dose` command collects dose/new-pen/factors, runs script, handles hypo sensor-noise re-run, outputs terse suggestion. Both tested live.
+**Blocked:** hookify rule fix still needs manual edit.
+**Next:** E6 (Telegram bot, now unblocked) or E1 (strain rule refinement).
+- Also added E5b to backlog: `/session-done` command to log session, commit, and push in one step.
