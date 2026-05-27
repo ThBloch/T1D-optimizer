@@ -32,7 +32,24 @@ Read this before proposing new refactors.
   - Wanted: granular `+3, +2, +1, 0, -1, -2`. Define s1 thresholds per level.
   - Clinical direction: low strain -> higher insulin resistance (+adj), high strain -> higher insulin sensitivity (-adj). Confirm with Thomas before encoding.
   - Approach: bin historical nights by s1, look at TIR / fasting outcomes per dose, infer thresholds, encode in `rules.py`, add ~6 unittest cases, document in `decisions-log.md`.
-  - Also: handle in-progress-cycle indexing quirk so today's strain is found at dose time (currently indexed under cycle start date, often yesterday).
+  - Status 2026-05-27: Phase A + A2 analysis done (scripts/strain_binning_analysis.py, scripts/strain_regression_analysis.py). Threshold table proposed; encoding gated on Thomas sign-off. See session-log.md 2026-05-27 entry.
+  - Hard requirement (Thomas, 2026-05-27): strain MUST be part of every dose suggestion. The current rule silently skips the strain block when `s1 is None`; this is unacceptable. -> see E1b, now elevated.
+- [ ] E1b. Always provide a usable s1 at dose time. **Elevated from "deferred" (2026-05-27).**
+  - Problem: `scripts/whoop_loader.py:18-23` indexes the in-progress cycle under its start date, so `whoop.get(today)` returns `None` at evening dose-suggestion time. `dexcom_fetch.py:177-182` then silently skips the strain branch. Thomas does not see a strain reasoning line, and the dose has no activity adjustment.
+  - Strategies to evaluate (pick one or stack):
+    1. Fetch the in-progress cycle live via `whoop-sdk` at dose-suggestion time and read `score.strain` if present.
+    2. Fall back to the most recent closed cycle (yesterday's s1) if today is unavailable, with a flag in the reasoning line ("using yesterday's s1=X as proxy").
+    3. If neither, prompt Thomas to estimate today's strain interactively (last resort).
+  - Acceptance: `dexcom_fetch.py` always emits a strain reasoning line (or an explicit "no strain available - manual estimate needed" line that prompts for input). Never silently 0.
+- [ ] E1c. Rule audit and skip toggles - review every rule in `scripts/rules.py` with Thomas, line by line.
+  - Reason: Thomas does not recognise the current thresholds (FASTING_LO=10.5, FASTING_MID=12.0, FASTING_HI=14.0, ACTIVITY_THR=12.0, DOSE_MIN=15, DOSE_MAX=29) as ones he personally set. They were inherited from earlier work or defaulted. He needs to own each one.
+  - Approach:
+    1. Enumerate every threshold + every conditional branch in `thomas_rules` (fasting tiers, hypo priority, strain block, new-pen, clamp).
+    2. For each, surface to Thomas: current value, where it came from (`docs/decisions-log.md` cross-reference if any), and the historical effect on dose suggestions (count of nights it would have fired, or actually fired).
+    3. Thomas accepts, modifies, or marks the rule "skippable".
+    4. Add per-rule skip toggle: either a CLI flag on `dexcom_fetch.py` (e.g. `--skip strain,fasting`) or a config block at the top of `rules.py` (`ENABLED_RULES = {"fasting": True, "strain": True, ...}`).
+    5. Document the audited rule set in a new `docs/rules-spec.md` so the rule contract is explicit and reviewable.
+  - Not blocked; can start in any session.
 - [ ] E2. GitHub publish - private backup done 2026-05-21; public migration deferred until "share-ready" AND C1 done.
   - Decision 2026-05-21: eventual aim is public, to help other T1D patients/builders. Not a priority now. "Better first" - improve model + automation before going public.
   - Informal quality bar: E1 (strain rule), E10 (nighttime objective validated), at least E5 (Phase 1 automation) done so it's not a single-user manual tool.

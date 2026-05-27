@@ -46,7 +46,7 @@ Append one entry per session. Format:
 - Interaction model produces a singularity (b_dose + b_interact*s1 → 0 near s1=11.5), physiologically nonsense. Dropped in favor of additive model.
 - Direction confirmed by both data and Thomas's observation: low dose → glucose jumps up (under-dose); high dose → glucose drops down (over-dose). Low strain → insulin resistance (+adj); high strain → insulin sensitivity (-adj).
 - Used Thomas's bolus ISF (~1.5-2.0 mmol/L per unit) to estimate Lantus basal slope coefficient at ~0.09 mmol/L/h per unit - working number, can revise. Thomas pushed back that thresholds must be data-driven; treat the clinical prior as a fallback only where data underdetermines.
-- E1b (WHOOP in-progress cycle indexing fix) confirmed out of scope for this task; will be added to backlog after Phase B.
+- E1b (WHOOP in-progress cycle indexing fix) initially treated as out of scope; **later elevated** - see continuation below.
 **Blocked:** Phase B encoding gated on Thomas signing off on the 6-tier threshold table. Current proposed table (data-anchored to observed per-bin slopes from binning report):
 | Adj | s1 range | Evidence |
 |-----|----------|----------|
@@ -57,7 +57,14 @@ Append one entry per session. Format:
 | -1 | 13 ≤ s1 < 15 | currently -2, flat - granularity move (will shift mildly upward) |
 | -2 | s1 ≥ 15 | peak, current cap holds (slope -0.21 to -0.35) |
 Thomas may shift any threshold before encoding.
+
+### 2026-05-27 (continued, post-pause)
+**Changed:** `docs/improvements.md` - E1 updated with status pointer to this session; E1b promoted from "deferred" to active with three strategy options; new item **E1c** added (line-by-line rule audit + per-rule skip toggle). New memory `feedback-rule-parameter-ownership` saved (+ MEMORY.md index updated). `data/doses.csv` got two rows from `/dose 24` run (2026-05-26 backfill + 2026-05-27 suggestion 24u "Fasting 10.3 in range -> no adjustment").
+**Decided:**
+- **Strain non-negotiable**: every dose suggestion MUST include a strain reasoning line. Silent skip when WHOOP in-progress cycle returns `None` is unacceptable. This re-elevates E1b ahead of Phase B encoding.
+- **Rule ownership**: Thomas does NOT recognise the current `thomas_rules` thresholds (FASTING_LO=10.5, FASTING_MID=12.0, FASTING_HI=14.0, ACTIVITY_THR=12.0, DOSE_MIN=15, DOSE_MAX=29) as values he personally set. They were inherited/defaulted. Triggered by tonight's 10.3 fasting not firing +1u because 10.3 < 10.5. New backlog item E1c will surface every rule to Thomas with current value + source + historical firing count, then add per-rule skip toggle.
+**Blocked:** Phase B (E1 encoding) still gated on threshold sign-off. Now also recommend running **E1b** before or in parallel with Phase B so the new strain rule actually fires every night.
 **Next:**
-1. Thomas reviews `output/strain_binning.txt` and `output/strain_regression.txt`, signs off (or modifies) the 6-tier table.
-2. Phase B execution: edit `scripts/rules.py` (replace `ACTIVITY_THR=12.0` and the binary block at lines 52-54 with 5 thresholds + 6-branch if/elif), add ~6 tests to `tests/test_rules.py` (one per tier + boundary + None handling), write decisions-log.md entry citing the regression evidence + chosen thresholds, mark E1 done in `docs/improvements.md` and add E1b for WHOOP in-progress-cycle fix.
-3. Backtest: run `py -X utf8 scripts/rules_model.py` before and after the rule edit; record MAE/agreement delta in the decisions-log entry.
+1. Pick up E1b - implement one of: live whoop-sdk fetch at dose-suggestion time, fallback to yesterday's cycle s1 with flag, or interactive prompt fallback. Acceptance: `dexcom_fetch.py` always emits a strain reasoning line.
+2. Start E1c rule audit - enumerate every threshold + branch in `scripts/rules.py`, surface to Thomas, accept/modify/skip, then implement the skip-toggle (CLI flag or `ENABLED_RULES` config) and a new `docs/rules-spec.md`.
+3. Phase B (E1 encode) once E1b lands and Thomas signs off on thresholds.
