@@ -147,3 +147,102 @@ D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sib
 - Sub-todo D, "I don't know" path: if Thomas can't answer the strain prompt, what does `/dose` do? Refuse to suggest? Run without strain? Use a documented default? This decision shapes the rest of the manual-fallback flow.
 - Live-fetch viability: anyone planning to read `whoop-sdk` docs to answer "does it expose the in-progress cycle"? Could be done by Claude in a future session if Thomas wants it scoped.
 - Bot replication: when E6 (Telegram bot) gets built, the manual prompts in `/dose` will need to be replicated in the bot. Designing the prompt spec as a separate doc (not inline in `dose.md`) makes that reuse easier - relevant to sub-todo D's "output medium" question.
+
+## 2026-05-28 (continued) architecture-doc-walkthrough
+**Changed:** `docs/architecture.md` - Thomas added inline annotations to section 1 ("matching model is incorrect" + new "math model" entry as #3). No other files modified this turn.
+
+**Discussed:** architecture.md section-by-section. Six sections total; covered sections 1-4 this turn. Sections 5-6 still to walk.
+
+**Decisions (sections 1-4):**
+
+**Section 1 - "What we predict": ranking and labeling.**
+- Target ranking: 1=Math model, 2=Rules model, 3=Matching model.
+- Current ranking: Rules is primary; Math does not yet outperform (decision-tree MAE 1.45u vs rules 1.32u per current backtest).
+- Doc should describe BOTH states with labels ("Current primary: Rules. Target primary: Math.").
+- Draft table proposed (architecture.md section 1 rewrite candidate):
+
+  | Rank | Model | Script | Approach |
+  |---|---|---|---|
+  | 1 | Math model | `ml_model.py` | sklearn pipeline; 80/20 time-based train/test split; predicts TIR% per candidate dose |
+  | 2 | Rules model | `rules_model.py` | encodes `thomas_rules()`; backtests; suggests via anchor + adjustments |
+  | 3 | Matching model | `basal_analysis.py` | observational - finds historical nights similar on (inj_g, s1) |
+
+  Plus two labeled lines: "Current primary: Rules" / "Target primary: Math".
+- Implication: `CLAUDE.md` Quick start labels `basal_analysis.py` as "main analysis + tonight's suggestion". That contradicts "rules-primary" framing. Needs updating when section 1 is rewritten.
+
+**Section 3 - Exclusion rules: both amended.**
+- **Rule 1 (hypo-correction nights):** threshold 7.0 -> 10.0.
+  - Today: post-hypo recovery above 7.0 flags the night as hypo-correction (excluded from matching, shown as DOSE>HIGH).
+  - New: only flag when post-hypo max exceeds 10.0. Fewer nights flagged; more nights retained for matching.
+  - Code touchpoints: `basal_analysis.py:48` (`if max(post) > 7.0`), `basal_analysis.py:50-51, 74` (redundant `correction_spike_above_10` flag collapses into main `hypo_correction`), `ml_model.py:45` (`max(vals[hypo_idx:])>7.0`).
+  - Architecture.md cite "58/297 nights (19.5%)" will be stale after the recomputation.
+- **Rule 2 (high-bolus outlier nights):** removed entirely.
+  - Reason: bolus data unreliable since 2026-01-31 NovoPen switch. Bolus is not a stable exclusion criterion until digital-pen data has accumulated.
+  - Re-evaluate later when post-NovoPen bolus data is plentiful.
+  - Code touchpoints: `basal_analysis.py:123-133` (`iqr_bolus_outlier()` function), `basal_analysis.py:195-205` (exclusion logic in main flow), `[bolus]` annotations in weekly summary loop.
+  - Architecture.md "(bolus confounder, r=-0.29 p<0.001)" cite goes away when section 3 is rewritten.
+
+**Section 4 - Titration rules: fasting tier overhauled.**
+- **Clamp 15-29u:** confirmed correct. Future-work note: may be adjusted based on general fitness / stress level. Logged as future investigation, NOT in current scope.
+- **Fasting +1u threshold:** 10.5 -> 10.0 (incremental fix; resolves 2026-05-27 complaint about fasting 10.3 not firing the +1u rule).
+- **Structural shift: fasting tier rule replaced by slope-based rule.**
+  - Decision: dose adjustment reacts to overnight CGM slope direction/magnitude, not endpoint fasting at 07:00.
+  - "Level" adjustments belong to bolus (correction doses), not basal. Slope is basal's signal.
+  - Slope window: **second half of night** (matches Phase A2 outcome metric; fraction-based last 50% of overnight CGM readings).
+  - Slope **alone** drives the rule trigger - no combined slope+level check. Level corrections are bolus's job.
+  - Magnitude **scales with slope steepness** (Option A from the three offered).
+  - **HARD BLOCKER:** bolus data needed to disambiguate "basal too low" from "I corrected mid-night with a bolus". Without bolus history, slope-based rule cannot be safely deployed. NovoPen 6 bolus integration is now a prerequisite, not a "nice to have".
+- **Other section-4 rules not yet addressed this session (still stand as-is):**
+  - Fasting +2u threshold (FASTING_MID=12.0) - will be subsumed if entire fasting tier becomes slope-based
+  - Fasting +3u threshold (FASTING_HI=14.0) - same
+  - Activity rule (s1 >= 12 -> -2u) - being replaced by E1's 6-tier scale anyway
+  - New pen -1u - not discussed
+  - Hypo events: -1u for 1, -2u for >=2 - not discussed
+
+**Open questions still pending on the slope-based rule:**
+- Down-direction symmetry: falling slope without a hypo - triggers -u, or stay neutral and let hypos drive down? (Thomas's 2026-05-27 comment "high dose -> glucose drops down" argues for -u; current rule waits for actual hypo before going down.)
+- Slope thresholds: define educated-guess values now (e.g. 0.2 / 0.5 / 1.0 mmol/L per hour) or wait until bolus-cleaned backtest can validate?
+- Adjustment scale: keep 3-tier (+1/+2/+3) or finer/coarser?
+- Hypo priority structure: still required, or does the slope encode hypo severity already (since a hypo is part of the trajectory)?
+
+**Changes to apply later (NOT applied this session - all captured for resume):**
+
+**A. `docs/architecture.md` rewrite.**
+- Section 1: replace flat numbered list with current+target table (see draft above). Reorder math/rules/matching as target ranking; add Current vs Target labels.
+- Section 3: Rule 1 threshold 7 -> 10; Rule 2 removed; "58/297 nights (19.5%)" stat needs recomputing.
+- Section 4: fasting +1u threshold update; full section rewrite once slope-based rule is finalised.
+- Strip em-dashes throughout (ASCII-only convention from global CLAUDE.md). Multiple instances.
+
+**B. `scripts/rules.py` updates.**
+- `FASTING_LO = 10.5` -> `10.0`.
+- Eventually: replace fasting-tier branch entirely with slope-based logic (gated on bolus integration).
+- Tests on the 10.5 boundary in `tests/test_rules.py` need updating.
+
+**C. `scripts/basal_analysis.py` updates.**
+- Line 48: hypo-correction threshold 7.0 -> 10.0.
+- Collapse redundant `correction_spike_above_10` flag into `hypo_correction`.
+- Remove `iqr_bolus_outlier()` (lines 123-133) and bolus-exclusion logic in main flow (lines 195-205).
+- Remove `[bolus]` annotations in weekly summary loop.
+
+**D. `scripts/ml_model.py` updates.**
+- Line 45: hypo-correction threshold 7.0 -> 10.0.
+
+**E. `docs/improvements.md` backlog additions.**
+- New item: slope-based fasting rule definition + implementation. Gated on F (bolus integration). Inherits the open questions above.
+- New item: NovoPen 6 bolus integration. Elevate from "known gap" in Background section to an active prerequisite for the slope-based rule.
+
+**F. `docs/decisions-log.md` entries (when each change ships).**
+- Hypo-correction threshold 7 -> 10 (with new "% nights flagged" stat).
+- Bolus IQR exclusion removal (with reason: post-NovoPen data unstable).
+- Fasting +1u threshold 10.5 -> 10.0.
+- Fasting tier -> slope-based shift (large decision; will likely need its own entry with the resolved open questions).
+
+**G. `CLAUDE.md` Quick start update.**
+- `basal_analysis.py` labelled "main analysis + tonight's suggestion" is misaligned with the rules-primary framing. Reword or downgrade.
+
+**Blocked:** Slope-based rule (section 4 main change) depends on NovoPen 6 bolus integration (item E).
+
+**Next (when Thomas resumes architecture walkthrough):**
+1. Resolve the 4 open questions on the slope-based rule (down-direction, thresholds, scale, hypo priority).
+2. Walk section 5 (Why ML underperforms) and section 6 (Data pipeline).
+3. Then apply A-G in dependency order. Likely apply non-blocked items first (architecture.md rewrite, rules.py FASTING_LO change, basal_analysis.py + ml_model.py threshold change, bolus exclusion removal). Slope-based rule waits for bolus integration.

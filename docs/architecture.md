@@ -4,8 +4,9 @@
 
 ### What we predict
 Not the optimal dose directly — we don't have ground truth labels. Instead:
-1. **Matching model** (`basal_analysis.py`): find historical nights similar to tonight, show outcomes by dose
+1. **Matching model** (`basal_analysis.py`): find historical nights similar to tonight, show outcomes by dose - This is incorrect. Goal was to do ML or similar to predict based on math and statistics. Not based on matching days.
 2. **Rules model** (`rules_model.py`): encode Thomas's titration rules, backtest, suggest tonight's dose
+3. **Math model** - predicting the correct dose based on a machine learning model splitting the data into two groups. Training and testing.
 
 ### Validated predictors (from predictor_test.py)
 | Variable | Spearman r | p | Status |
