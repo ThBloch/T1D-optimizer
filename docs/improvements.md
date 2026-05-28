@@ -34,13 +34,31 @@ Read this before proposing new refactors.
   - Approach: bin historical nights by s1, look at TIR / fasting outcomes per dose, infer thresholds, encode in `rules.py`, add ~6 unittest cases, document in `decisions-log.md`.
   - Status 2026-05-27: Phase A + A2 analysis done (scripts/strain_binning_analysis.py, scripts/strain_regression_analysis.py). Threshold table proposed; encoding gated on Thomas sign-off. See session-log.md 2026-05-27 entry.
   - Hard requirement (Thomas, 2026-05-27): strain MUST be part of every dose suggestion. The current rule silently skips the strain block when `s1 is None`; this is unacceptable. -> see E1b, now elevated.
-- [ ] E1b. Always provide a usable s1 at dose time. **Elevated from "deferred" (2026-05-27).**
+- [ ] E1b. Always provide a usable s1 at dose time. **Elevated 2026-05-27; design corrected 2026-05-28.**
   - Problem: `scripts/whoop_loader.py:18-23` indexes the in-progress cycle under its start date, so `whoop.get(today)` returns `None` at evening dose-suggestion time. `dexcom_fetch.py:177-182` then silently skips the strain branch. Thomas does not see a strain reasoning line, and the dose has no activity adjustment.
-  - Strategies to evaluate (pick one or stack):
-    1. Fetch the in-progress cycle live via `whoop-sdk` at dose-suggestion time and read `score.strain` if present.
-    2. Fall back to the most recent closed cycle (yesterday's s1) if today is unavailable, with a flag in the reasoning line ("using yesterday's s1=X as proxy").
-    3. If neither, prompt Thomas to estimate today's strain interactively (last resort).
-  - Acceptance: `dexcom_fetch.py` always emits a strain reasoning line (or an explicit "no strain available - manual estimate needed" line that prompts for input). Never silently 0.
+  - **Generalized scope (2026-05-28):** The same bug class affects `/dose` step 1 - it asks for yesterday's dose upfront, but `dexcom_fetch.py` already auto-resolves yesterday's dose from Clarity CSV then diary on most nights. Fix both in one pass: the script signals what it could not auto-resolve via structured stdout lines; the slash command asks only for the missing items.
+  - **Strain resolution - exactly two valid paths:**
+    1. Today's WHOOP strain from cache (`whoop_loader.load_whoop()`; possibly augmented by live-fetch - see exploration sub-task below).
+    2. Ask Thomas directly via documented manual-fallback prompts (see E1d).
+  - **Yesterday's s1 is never a valid fallback.** Strain varies day-to-day; using yesterday's value produces a worse suggestion than asking the user. Memory: `feedback-strain-yesterday-invalid` (Thomas, 2026-05-28).
+  - **Signaling mechanism (decided 2026-05-28):** Script emits structured stdout lines `NEEDS: <name>` (e.g. `NEEDS: dose`, `NEEDS: strain`) for inputs it cannot auto-resolve. `/dose` parses stdout, asks only for the listed items via prompts from E1d, then re-runs the script with the values passed as flags. Exit codes rejected: (a) cannot cleanly encode multiple missing items in one integer, (b) inconsistent with `/dose`'s existing stdout-parsing approach (hypo re-run is the model, step 5), (c) less human-readable when running the script manually.
+  - **Sub-task (exploration, does not block):** Live-fetch the in-progress WHOOP cycle via `whoop-sdk` at dose-suggestion time. Investigate: does the SDK return the in-progress cycle? Is `score.strain` populated mid-day before the cycle closes? If viable -> slot in between cache lookup and manual prompt. If not -> manual prompt is the only fallback for cache-miss days.
+  - **Sub-task (gates implementation):** E1d below - document manual-fallback prompt steps. Implementation cannot start until E1d is resolved.
+  - **Implementation outline (after E1d lands):**
+    1. `dexcom_fetch.py`: replace the Priority-3 `input()` dose prompt (lines ~162-174) with `print("NEEDS: dose")` + return. Replace the silent strain-None path (lines ~181-182) with `print("NEEDS: strain")` + return (strain is non-negotiable per the 2026-05-27 entry; final behavior depends on the "skip" decision in E1d).
+    2. `dexcom_fetch.py`: add `--strain N` flag, mirror of `--dose N`. Flag overrides the cache lookup.
+    3. `.claude/commands/dose.md`: remove step 1 (upfront dose question). New flow: run script with no flags -> parse stdout for `NEEDS:` lines -> ask only for those using prompts from E1d -> re-run with `--dose N` / `--strain N` flags.
+  - **Acceptance:** `/dose` only asks for inputs the script cannot resolve. `dexcom_fetch.py` never silently skips strain - emits `NEEDS: strain` when unavailable. Script never blocks on `input()` in non-interactive mode.
+- [ ] E1d. Document the manual-fallback prompt steps for `/dose`. **Gates E1b implementation.**
+  - When the script signals `NEEDS: <name>`, `/dose` must ask using a documented prompt. This item specifies those prompts.
+  - Open questions to resolve before writing the spec:
+    - **Wording:** e.g. "What was today's WHOOP strain (0-21)?" - or alternative framing? Include hint about expected range?
+    - **Validation:** accept floats (strain is e.g. 12.4)? Reject if outside 0-21? Reject negative or non-numeric input?
+    - **"I don't know" path:** is "skip" an acceptable answer for strain? If yes - run without strain (contradicts the 2026-05-27 non-negotiable), use a documented default, or refuse to suggest a dose at all? Thomas must decide; this shapes the whole flow.
+    - **Order of asks:** if both dose AND strain are missing in the same run (rare - first install with no Clarity CSV, no diary, no WHOOP), ask dose first or strain first? Suggestion: dose first (script cannot suggest without it).
+    - **Re-run safety:** after collecting inputs, `/dose` re-invokes the script with the appropriate flags. Cap re-runs (max two passes or per-item retry) so invalid input does not infinite-loop.
+    - **Output medium:** prompts inline in `.claude/commands/dose.md`, or in a separate doc like `docs/dose-manual-prompts.md`? Inline is simpler; separate is more reusable when E6 (Telegram bot) replicates the same prompts.
+  - Output: a "Manual fallback prompts" section in `dose.md` (or referenced doc) with exact prompt strings, validation rules, and order of operations.
 - [ ] E1c. Rule audit and skip toggles - review every rule in `scripts/rules.py` with Thomas, line by line.
   - Reason: Thomas does not recognise the current thresholds (FASTING_LO=10.5, FASTING_MID=12.0, FASTING_HI=14.0, ACTIVITY_THR=12.0, DOSE_MIN=15, DOSE_MAX=29) as ones he personally set. They were inherited from earlier work or defaulted. He needs to own each one.
   - Approach:
