@@ -68,3 +68,82 @@ Thomas may shift any threshold before encoding.
 1. Pick up E1b - implement one of: live whoop-sdk fetch at dose-suggestion time, fallback to yesterday's cycle s1 with flag, or interactive prompt fallback. Acceptance: `dexcom_fetch.py` always emits a strain reasoning line.
 2. Start E1c rule audit - enumerate every threshold + branch in `scripts/rules.py`, surface to Thomas, accept/modify/skip, then implement the skip-toggle (CLI flag or `ENABLED_RULES` config) and a new `docs/rules-spec.md`.
 3. Phase B (E1 encode) once E1b lands and Thomas signs off on thresholds.
+
+## 2026-05-28 e1b-design-spar
+**Changed:** Nothing applied this session. Discussion + capture only - Thomas wants to work on the actual changes later. This entry exists so the next session can resume seamlessly.
+
+**Discussed:** E1b design - "always provide a usable s1 at dose time" - and discovered the same class of bug applies to the dose-anchor question in `/dose`. Plan-mode session; deep design sparring driven by Thomas's pushback on Claude's initial framing.
+
+**Original framing (before Thomas's corrections):**
+- Problem (unchanged from yesterday): `scripts/whoop_loader.py:18-23` indexes the in-progress WHOOP cycle under its start date, so `whoop.get(today)` returns `None` at evening dose-suggestion time. `dexcom_fetch.py:177-182` then silently calls `thomas_rules(s1=None)`, skipping the strain branch. No strain reasoning line is emitted; no activity adjustment is applied. Thomas considers this unacceptable (see `feedback_rule_parameter_ownership` and the 2026-05-27 entry above: strain MUST inform every suggestion).
+- Initial /dose-command-only proposal (Claude): add a "Today's WHOOP strain? (enter to use cached value)" question to /dose step 1; pass as `--strain N` flag. Thomas pushed back: `/dose` should only ask for things that are not already available in the data.
+- Refined cross-cutting proposal: the same bug class affects the dose-anchor question. `/dose` step 1 always asks for yesterday's dose, but `dexcom_fetch.py` already auto-resolves yesterday's dose from Clarity CSV first, then the diary - so the question is usually redundant. Fix both in one pass: script signals what it could not auto-resolve on stdout via structured lines (`NEEDS: dose`, `NEEDS: strain`); slash command parses stdout, asks only for the missing items, then re-runs the script with the missing values passed as flags.
+- Layered strain-resolution Claude initially proposed: WHOOP cache (today) -> WHOOP live-fetch (in-progress cycle via `whoop-sdk`) -> yesterday's s1 as proxy with a flag in the reasoning line -> interactive manual prompt as last resort.
+- Signaling-mechanism analysis: structured stdout lines preferred over exit codes because (a) a single integer cannot cleanly encode multiple missing items - would require bitmask encoding that breaks at the third input type, (b) `/dose` already parses stdout with regex (steps 5+6 do exactly this for hypo events and suggested dose), (c) `NEEDS:` lines are human-readable when running the script manually from a terminal, which matters for debugging. Exit codes rejected.
+
+**Thomas's corrections (2026-05-28) - all four are load-bearing:**
+
+1. *Automation goal had been misframed by Claude.* The Telegram bot (improvements.md section E, phases E6/E7) is for **remote** suggestion requests from Thomas's phone when he is away from his home computer. It is NOT a scheduled nightly push. Dose decisions are always active, user-initiated choices - Thomas decides when to inject and asks for a suggestion at that moment. The bot would never silently trigger or push a suggestion at a fixed time. Multi-turn interactive prompts in the bot are explicit and welcome - chat handles them naturally. Claude's earlier argument that "interactive prompts conflict with the automation goal" is wrong and must be discarded. Implication: layered design with interactive prompts is fine; the bot can replicate the same prompt flow as the local `/dose` command.
+
+2. *Yesterday's strain is never a usable proxy for today's strain.* Strategy 2 from the original E1b ("fall back to most recent closed cycle, flag it in the reasoning line") is dropped entirely. Strain varies day-to-day; yesterday's value is not representative of today's insulin sensitivity. Using it produces a wrong dose suggestion that is **worse** than omitting strain or asking the user. Exactly two valid resolution paths remain: (a) today's strain from WHOOP (cache lookup, plus possibly live-fetch the in-progress cycle), (b) ask Thomas directly.
+
+3. *WHOOP live-fetch is an exploration item, not a decided design.* Whether `whoop-sdk` exposes the in-progress cycle and whether `score.strain` is populated mid-day before the cycle closes both need investigation. Add this as exploratory sub-work; do not commit to it as the chosen fallback. If exploration shows live-fetch is viable, it slots in between cache and manual prompt. If not, manual prompt is the only fallback.
+
+4. *Manual fallback prompt steps must be documented.* When strain (or any input) cannot be auto-resolved and `/dose` must ask, the prompt flow needs a written spec: what is asked, in what order, with what wording, what input formats are accepted, validation rules, what happens if the user can't provide a value. This is a sub-todo of its own and gates the implementation of the NEEDS-line protocol. Thomas considers undocumented manual prompts unacceptable.
+
+**Changes to apply later (NOT applied this session - this is the to-do):**
+
+A. NEW memory file at `C:\Users\thblo\.claude\projects\D--claude-t1d\memory\feedback_strain_yesterday_invalid.md`:
+   - Frontmatter: `name: feedback-strain-yesterday-invalid`, `type: feedback`, description "Never use yesterday's WHOOP strain as a substitute for today's strain".
+   - Body (lead with rule, then Why, then How to apply):
+     - Rule: Never use yesterday's WHOOP strain as a proxy for today's strain. Drop any fallback chain that includes "use yesterday's s1 if today's is unavailable".
+     - Why: Strain varies day-to-day. Yesterday's value is not representative of today's insulin sensitivity. Using it produces a wrong dose suggestion that is worse than omitting strain or asking the user. Thomas confirmed explicitly 2026-05-28.
+     - How to apply: In any code path that needs today's strain and the WHOOP cache returns None, do not look at yesterday's cycle. Two valid paths only: resolve today's strain (cache or live-fetch), or ask the user directly. Link to [[feedback-rule-parameter-ownership]] and [[feedback-night-quality-slope]] as related context.
+   - Add to `MEMORY.md` index: `- [Strain yesterday invalid](feedback_strain_yesterday_invalid.md) - Never use yesterday's strain as a proxy for today's strain`
+
+B. UPDATE memory file `project_automation_goal.md`:
+   - The current entry (per MEMORY.md index) reads "Phone-driven nightly suggestion via Telegram bot; phased roadmap in improvements.md section E". This implies a scheduled push and is wrong.
+   - Updated framing must say: The Telegram bot is for **remote suggestion requests** (Thomas asking for a suggestion when away from his home computer). Always user-initiated. Never a scheduled push. Dose decisions are active choices Thomas makes; the system supports them, never triggers them. Multi-turn interactive prompts in the bot are welcome - chat handles them naturally.
+   - Action item: read the current file body and rewrite the relevant paragraph(s). Update the MEMORY.md index line too if the description still implies a scheduled flow.
+
+C. UPDATE `docs/improvements.md` E1b entry - rewrite the design body. Current body is in two pieces: the original entry (lines ~38-43 before today's expansion) and the 2026-05-28 expansion Claude added earlier in this session (lines ~38-50 currently). Both need to be reconciled and corrected. New body should:
+   - Keep the problem statement (WHOOP in-progress cycle indexing causes None at evening dose time; `dexcom_fetch.py` silently skips strain).
+   - Remove the strategy enumeration "(pick one or stack)" and remove strategy 2 (yesterday's s1 as proxy) entirely. Per correction #2 above.
+   - Replace the strategies list with the corrected design:
+     - Two valid strain-resolution paths only: (a) today's WHOOP strain from cache (and possibly live-fetch - see exploration sub-task), (b) ask Thomas via documented prompts.
+     - Sub-task to explore (does not block implementation): live-fetch the in-progress cycle from `whoop-sdk` at dose-suggestion time. Investigation goals: does the SDK return the in-progress cycle? Is `score.strain` populated mid-day before the cycle closes? If yes -> integrate as a path between cache lookup and manual prompt. If no -> manual prompt is the only fallback for cache-miss days. Mark this sub-task as exploration only; do not commit to it as the design.
+     - Sub-task to document (gates implementation): the manual fallback prompt steps - see D below.
+     - Generalization decided this session: the same `NEEDS:`-line protocol applies to the dose anchor too. `/dose` step 1 currently asks for yesterday's dose upfront, but `dexcom_fetch.py` already auto-resolves it from Clarity then diary. Defer asking until the script signals `NEEDS: dose`. Apply the same pattern to strain via `NEEDS: strain`.
+   - Signaling mechanism (decided this session): structured stdout lines of the form `NEEDS: <name>` (e.g. `NEEDS: dose`, `NEEDS: strain`). The slash command parses these from script stdout, asks only for the listed missing items using documented prompt wording, then re-runs the script with the values passed as flags (`--dose N`, `--strain N`). Exit codes were considered and rejected: (a) cannot cleanly encode multiple missing items in a single integer without fragile bitmask encoding, (b) inconsistent with the existing `/dose` stdout-parsing approach (hypo re-run already does this in step 5), (c) less human-readable when running the script manually.
+   - Acceptance criteria (refined): `dexcom_fetch.py` never silently skips strain. If strain cannot be resolved by the available auto-paths, the script emits `NEEDS: strain` on stdout. `/dose` parses stdout for `NEEDS:` lines, asks only for the missing items using the documented prompt wording, then re-runs the script with the missing values passed as flags. The script must never block on `input()` in non-interactive mode (already true for the dose anchor since B8; extend to strain).
+
+D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sibling item like E1d). Title: "Document the manual-fallback prompt steps for `/dose`."
+   - Open questions to resolve before writing the spec:
+     - Wording: e.g. "What was today's WHOOP strain (0-21)?" - or alternative framing? Should the prompt include a hint about typical values or expected range?
+     - Validation: accept floats (typical strain readings are like 12.4)? Reject if outside 0-21? Reject negative numbers and non-numeric input?
+     - "I don't know" path: is "skip" an acceptable answer for strain? If yes, what happens downstream - does the script run without strain (silent skip again, contradicting the non-negotiable rule)? Or does it use a documented default? Or does it refuse to suggest a dose at all? Thomas must decide.
+     - Order of asks: if both dose AND strain are missing in the same run (rare - typically only on first run of a new install with no Clarity CSV and no diary), ask dose first or strain first? Suggestion: dose first, because the script cannot suggest a dose at all without it; strain is graceful-degrade-only if "skip" is allowed.
+     - Re-run flow: after collecting missing inputs, `/dose` re-invokes `dexcom_fetch.py` with `--dose N --strain N` (or whichever subset was missing). Confirm the script supports both flags and that the rerun does not infinite-loop on persistent `NEEDS:` lines (e.g. if user types an invalid value, the script re-emits `NEEDS:` - but `/dose` should not loop forever; max two passes or per-item retry).
+     - Output medium: do the prompts live as inline text in `.claude/commands/dose.md`, or as a separate referenced doc like `docs/dose-manual-prompts.md`? Inline is simpler; separate is more reusable when the Telegram bot replicates the same prompts.
+   - Output of this sub-todo: a "Manual fallback prompts" section in `.claude/commands/dose.md` (or a referenced doc) with the exact prompt strings, validation rules, and order of operations.
+
+**Code changes implied (NOT in scope for the documentation pass, but listed here so future-Claude scopes them next):**
+- `scripts/dexcom_fetch.py`: replace the Priority-3 interactive `input()` dose prompt (currently lines ~162-174) with `print("NEEDS: dose")` + `return`. Replace the silent strain-None path (currently lines ~181-182) with `print("NEEDS: strain")` + continue-without-strain-but-still-no-suggestion (or `return`, depending on the "skip" decision in D). Add `--strain N` flag, mirror of `--dose N`. Wire the flag into the WHOOP lookup so the flag overrides the cache.
+- `.claude/commands/dose.md`: remove the upfront dose question (step 1). New flow: run script with no flags -> parse stdout for `NEEDS:` lines -> ask only for those using the documented prompt wording -> re-run with appropriate flags. Existing hypo re-run pattern (step 5) is the model.
+- Tests: `tests/test_rules.py` likely needs no new cases since rule logic does not change. But `dexcom_fetch.py` integration behavior could benefit from a smoke test that asserts `NEEDS:` lines are emitted on missing inputs. Out of scope for current test framework which is `thomas_rules`-focused.
+- Live-fetch (exploration from C above) is independent and not on the critical path; can be done in parallel or deferred entirely.
+
+**Blocked:** Nothing technical. Thomas explicitly does not want to apply these changes now - he wants to work on them later.
+
+**Next (when Thomas resumes - exact order):**
+1. Apply memory updates A (new `feedback-strain-yesterday-invalid` file + MEMORY.md index entry).
+2. Apply memory update B (`project-automation-goal` rewrite, plus MEMORY.md index line if needed).
+3. Rewrite E1b in `docs/improvements.md` per C.
+4. Add sub-todo D for manual-fallback prompt documentation (decide placement: nested under E1b, or sibling like E1d).
+5. Then scope and implement the actual code changes (the "Code changes implied" block above).
+6. Live-fetch exploration is independent and can run in parallel or be deferred.
+
+**Open questions Thomas may want to weigh in on before next session:**
+- Sub-todo D, "I don't know" path: if Thomas can't answer the strain prompt, what does `/dose` do? Refuse to suggest? Run without strain? Use a documented default? This decision shapes the rest of the manual-fallback flow.
+- Live-fetch viability: anyone planning to read `whoop-sdk` docs to answer "does it expose the in-progress cycle"? Could be done by Claude in a future session if Thomas wants it scoped.
+- Bot replication: when E6 (Telegram bot) gets built, the manual prompts in `/dose` will need to be replicated in the bot. Designing the prompt spec as a separate doc (not inline in `dose.md`) makes that reuse easier - relevant to sub-todo D's "output medium" question.
