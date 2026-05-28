@@ -246,3 +246,60 @@ D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sib
 1. Resolve the 4 open questions on the slope-based rule (down-direction, thresholds, scale, hypo priority).
 2. Walk section 5 (Why ML underperforms) and section 6 (Data pipeline).
 3. Then apply A-G in dependency order. Likely apply non-blocked items first (architecture.md rewrite, rules.py FASTING_LO change, basal_analysis.py + ml_model.py threshold change, bolus exclusion removal). Slope-based rule waits for bolus integration.
+
+## 2026-05-28 (continued) t1d-redesign-audit
+**Changed:** `docs/t1d-redesign.md` created (new, ~25kB end-to-end audit + R-series to-do list). `docs/improvements.md` E10 updated (wake-up anchor bullet now reflects 06:20 alarm + deferred fixed-vs-relative decision).
+
+**Discussed:** Thomas was leaving and asked for an end-to-end audit while away. Brief: find inconsistencies across the whole solution, assess if parts play well together, assess modularity vs cascade risk, describe components and connections, map data sources (Dexcom / basal / bolus / WHOOP) and where used, map rules and where they apply, propose drift-prevention principles, deliver as a doc with to-do items extractable to `improvements.md`. Audit done under auto mode + Opus 4.7 (model switched mid-session via `/model opus`). Thomas returned, added 4 inline annotations to the doc, sparred each one, approved updates.
+
+**Audit findings (full content in t1d-redesign.md):**
+- 17 inconsistencies. Biggest cascade risks: hypo-correction logic duplicated 5x; `overnight_stats` duplicated 7x; stats helpers 3x; constants scattered with conflicting values (`TGT_LO/HI` is 4-10 in some files and 5-8 in others).
+- Production path is `dexcom_fetch.py -> rules.py -> dose_diary.py`. Three scripts currently print a "tonight's suggestion"; only the production path should.
+- WHOOP fields `recovery, hrv, rhr, sleep_perf` are loaded but never read by any rule. They HAVE been tested against TIR / fasting / mean in `predictor_test.py` but never against the slope outcome (decided 2026-05-27) or the inferential "what dose would have produced flat slope" question (decided today).
+- Bolus is in three conflicting framings across the codebase ("not a model feature" / "used as exclusion criterion" / "required for slope rule").
+- `second_half_trend()` (slope computation) lives only in an analysis script; needs to be promoted to first-class signal in the production path.
+- 12 principles (P1-P12) proposed for drift prevention. 20 R-series to-do items written in `improvements.md` format for direct copy-in.
+
+**Thomas's 4 annotations + sparring outcomes:**
+
+1. *Clarity bolus = only manually logged (no NovoPen doses).* Pre-2026-01-31 manual log is reliable. Post-NovoPen 6 there is no Clarity bolus at all. Sharpens R13: NovoPen integration is the only path to recent bolus.
+
+2. *Stress level should be added to WHOOP extract.* Preferred path: WHOOP Stress Monitor endpoint (added by WHOOP in 2024) via `whoop-sdk` if exposed. Fallback: HRV as derived stress proxy. New R21 captures this. How stress enters the rule structure deferred until R8 results land.
+
+3. *Overnight window should be (22, 6:20).* 06:20 = Thomas's weekday alarm; actual wake glucose is the goal. Fixed-vs-relative decision deferred to E10. New R22 captures the code change; E10 in `improvements.md` updated with the deferred design question.
+
+4. *Expected WHOOP biometrics to have been used for causation analysis.* Pushback accepted. R8 was framed wrong ("drop dead weight"). Rewritten to: "re-run predictor analysis with the inferential framing - what dose would have produced a flat second-half slope, given the night's signals?". Keep all WHOOP fields loaded until this analysis completes.
+
+**R-series additions/changes applied to t1d-redesign.md:**
+- R8 rewritten (from "drop dead weight" to "re-run with inferential framing").
+- R21 added (WHOOP stress signal).
+- R22 added (overnight window 06:20).
+
+**Open design points parked:**
+- How stress enters the rule structure (own branch vs input to slope rule) - awaits R8 results.
+- Fixed 06:20 daily vs wake-time-relative (weekends / sick days / sleep-ins) - awaits E10 work.
+
+**Implementation order recommended by the audit (for future sessions):**
+1. R1 -> R2 -> R6 (consolidation foundations: overnight_stats, hypo-correction, constants).
+2. R7 (function-and-main refactor so consolidated imports work).
+3. R3 -> R4 -> R5 (further consolidation: stats helpers, bolus_noise_test loader, TGT shadowing).
+4. R8 -> R9 (predictor re-run with inferential framing; drop s7 from active code).
+5. R10 -> R11 (slope as first-class signal; promote `second_half_trend()` into shared module).
+6. R12 -> R13 (bolus reconciliation; NovoPen 6 integration - unblocks the slope rule).
+7. R21 (WHOOP stress) in parallel with R8-R11.
+8. R22 (overnight window 06:20) after R1 lands.
+9. Then today's deferred decisions (hypo threshold 7->10, bolus IQR removal, fasting +1u 10.5->10) become trivial single-file edits.
+10. R14 -> R15 (clean up "tonight's suggestion" surface).
+11. R16 -> R17 -> R18 (architecture doc rewrite - last, by then the truth has settled).
+12. R19 -> R20 (decisions-log-reminder hookify; doc-scope policy) in parallel anytime.
+
+**Caveat:** the audit doc currently attributes itself to "Claude (Sonnet 4.6)" on line 3. Actual model was Opus 4.7 after the `/model opus` switch. Not fixed this turn - awaiting Thomas's call.
+
+**Blocked:** Nothing technical.
+
+**Next (when Thomas resumes):**
+1. Walk audit doc end-to-end if needed, or jump into specific R-items.
+2. R1 (overnight_stats consolidation) is the foundational change - unlocks low-cost edits for many deferred decisions.
+3. R21 path-1 investigation (whoop-sdk stress endpoint exposure) is a focused investigation; could be a subagent task.
+4. Architecture-doc walkthrough sections 5 + 6 (Why ML underperforms, Data pipeline) still pending from earlier in this session.
+5. Apply A-G from the prior `e1b-design-spar` entry (memory + improvements.md + code touchpoints) - same plan as before.

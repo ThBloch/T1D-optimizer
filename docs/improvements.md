@@ -105,7 +105,7 @@ Risks across E5-E9: MFA on Clarity, Dexcom ToS on automated access, UI brittlene
   - Weighting: second half of night > first half. Optimize for stability and on-target landing in the hours before wake, even at the cost of more deviation earlier in the night.
   - Open definitions (resolve with Thomas before encoding):
     - "Bedtime" = injection-time glucose (`vals[0]` in `compute_night_stats`)? Or first CGM reading after sleep-onset?
-    - "Wake-up" = current `fasting` (`vals[-1]`)? Or last reading before alarm time?
+    - "Wake-up" anchor: 06:20 = Thomas's weekday alarm (decided 2026-05-28); goal is actual wake glucose. Open: fixed 06:20 daily vs wake-time-relative (variable by day for weekends / sick days / sleep-ins).
     - "Flat" metric: SD, range, MAGE, or time outside +/-1.5 mmol/L band from bedtime? Pick one and justify.
     - "Second half" boundary: clock-based (e.g. 02:30) or fraction-based (last 50% of CGM points)?
     - Weighting function: hard split (e.g. 70/30) or gradient (linear ramp toward wake)?
