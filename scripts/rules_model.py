@@ -15,7 +15,7 @@ from sklearn.metrics import mean_absolute_error
 from whoop_loader import load_whoop
 from dexcom_loader import load_dexcom
 from rules import thomas_rules
-from night_stats import overnight_window, night_stats
+from night_stats import overnight_window, night_stats, second_half_trend
 
 
 def main():
@@ -26,10 +26,13 @@ def main():
     nights = []
     for inj_dt, inj_date, dose in basal_list:
         if inj_dt.hour < 18: continue
-        st = night_stats(overnight_window(inj_dt, glucose_list))
+        rdgs = overnight_window(inj_dt, glucose_list)
+        st = night_stats(rdgs)
         if not st: continue
+        slope, _, _ = second_half_trend(rdgs)
         s1 = strain_idx.get(inj_date, {}).get('strain')
-        nights.append({'date': inj_date, 'dose': dose, 's1': s1, **st})
+        nights.append({'date': inj_date, 'dose': dose, 's1': s1,
+                       'sh_slope': slope, **st})
 
     nights.sort(key=lambda x: x['date'])
 
@@ -48,6 +51,7 @@ def main():
             fasting        = prev['fasting'],
             hypo_events    = prev['hypo_events'],
             s1             = n['s1'],
+            sh_slope       = prev['sh_slope'],
         )
         if suggested is None: continue
 
@@ -144,7 +148,8 @@ def main():
     for i, n in enumerate(nights):
         if i == 0: continue
         prev = nights[i-1]
-        suggested, _ = thomas_rules(prev['dose'], prev['fasting'], prev['hypo_events'], n['s1'])
+        suggested, _ = thomas_rules(prev['dose'], prev['fasting'], prev['hypo_events'],
+                                     n['s1'], sh_slope=prev['sh_slope'])
         if suggested is None: continue
         results2.append({
             'date':         n['date'],
@@ -219,11 +224,13 @@ def main():
             fasting        = last_night['fasting'],
             hypo_events    = last_night['hypo_events'],
             s1             = today_s1,
+            sh_slope       = last_night['sh_slope'],
         )
         print(f'\n  Last night ({yesterday}):')
         print(f'    Dose injected : {last_night["dose"]:.0f}u')
         print(f'    Fasting (wake): {last_night["fasting"]} mmol/L')
         print(f'    Hypo events   : {last_night["hypo_events"]}')
+        print(f'    2nd-half slope: {last_night["sh_slope"]:+.2f} mmol/L/h' if last_night.get('sh_slope') is not None else '    2nd-half slope: n/a')
         print(f'    TIR (4-10)    : {last_night["tir_full"]}%')
         print(f'\n  Today s1 (strain): {today_s1 if today_s1 else "not yet available"}')
         print(f'\n  Rule-based suggestion: {suggested}u')

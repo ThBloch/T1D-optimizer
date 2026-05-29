@@ -160,6 +160,7 @@ def run():
         hypo_events=effective_hypos,
         s1=today_strain,
         new_pen=new_pen,
+        sh_slope=sh_slope_raw,
     )
     if no_hypo and stats['hypo_events'] > 0:
         reasoning.insert(0, f"Hypo override: ignoring {stats['hypo_events']} CGM-detected hypo(s) (sensor noise)")

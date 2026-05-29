@@ -33,7 +33,7 @@ output/                   generated reports (not committed)
 - `predictor_test.py`, `ml_model.py`, `bolus_noise_test.py` — secondary analyses
 - `inferential_predictor.py` — Phase 5 / R8 analysis: chooses best slope-vs-signals model spec via F-test, computes per-night inferred optimal dose, ranks candidate signals via direct + partial + inferential Spearman with convergence-based tier (HIGH/MED/LOW). Output to `output/inferential_predictor.txt`.
 - `strain_binning_analysis.py`, `strain_regression_analysis.py` — Phase A2 strain → slope analyses; the regression module exposes `fit_ols` for reuse.
-- `rules.py` — single source of truth for `thomas_rules()`; imported by dexcom_fetch + rules_model. Adjustments: hypo (priority over fasting), fasting tiers, activity (s1>=12), new pen (-1u). All stack except hypo blocks fasting tier.
+- `rules.py` — single source of truth for `thomas_rules()`; imported by dexcom_fetch + rules_model. Priority: hypo (-1/-2) overrides; otherwise slope tier (sh_slope vs flat=0.3, mid=0.7, hi=1.2 -> +1/+2/+3 up, -1/-2 down); if slope unavailable falls back to fasting tier (10.0/12.0/14.0). Activity (s1>=12 -> -2u) and new pen (-1u) stack. Clamp [15, 29].
 - `dexcom_loader.py` — shared Clarity CSV loader; returns `(glucose_list, basal_list, bolus_by_date)`. Also exposes `load_bolus_events()` (Clarity only) and `load_bolus_combined()` (Clarity pre-cutover + Glooko post-cutover). Warns at load time if any rows fail to parse.
 - `novopen_loader.py` — Glooko export loader; `load_glooko_bolus()` returns sorted `[(datetime, units), ...]` of NovoPen 6 injections with Glooko's Prime Detection rule applied (<=2u within 6 min of a following event = prime, dropped).
 - `whoop_loader.py` — shared WHOOP loader; reads `data/whoop_api/*.json` → `{date: {strain, recovery, hrv, rhr, sleep_perf}}`
@@ -42,7 +42,7 @@ output/                   generated reports (not committed)
 - `whoop_api_fetch.py` — incremental WHOOP refresh via `whoop-sdk` (4 endpoints, 7-day overlap cursor, dedup-merge by id/cycle_id, 429 backoff). `--full` forces backfill from 2025-04-09. Typical run ~4s.
 
 ## Tests
-- `tests/test_rules.py` — 18 unittest cases for `thomas_rules`. Run: `py -X utf8 tests/test_rules.py`
+- `tests/test_rules.py` — 38 unittest cases for `thomas_rules` (21 hypo/fasting/activity/pen + 17 slope). Run: `py -X utf8 tests/test_rules.py`
 
 ## Data sources (API-driven)
 - **Dexcom**: `pydexcom` Share API for live glucose. Creds at `<project_root>/dexcom_creds.json` (plaintext, gitignored). Returns tz-aware local datetimes; `dexcom_fetch.py` strips tzinfo. **Share API has glucose only — no insulin events.** Clarity CSV exports (manual: clarity.dexcom.com → save to `data/`) are the authoritative source for basal/bolus.
