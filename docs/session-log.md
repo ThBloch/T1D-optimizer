@@ -303,3 +303,30 @@ D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sib
 3. R21 path-1 investigation (whoop-sdk stress endpoint exposure) is a focused investigation; could be a subagent task.
 4. Architecture-doc walkthrough sections 5 + 6 (Why ML underperforms, Data pipeline) still pending from earlier in this session.
 5. Apply A-G from the prior `e1b-design-spar` entry (memory + improvements.md + code touchpoints) - same plan as before.
+
+## 2026-05-29 redesign-phases-7-to-9-close-out
+**Changed:**
+- Phase 7 (R14/R15): `scripts/basal_analysis.py` BLOCK 1 ("TONIGHT'S BASAL RANGE") + `scripts/rules_model.py` "TONIGHT'S SUGGESTION" block removed. `CLAUDE.md` Quick Start relabelled (basal_analysis = weekly pattern research; rules_model = backtest report research; dexcom_fetch = production path). Test count line updated 21 -> 38.
+- Phase 8 (R16-R20): `docs/architecture.md` full rewrite - Purpose with 5 invariants, Doc map, Data sources table, Signal flow ASCII diagram, structure-only Rules section. Verified no numeric restate of code constants via grep. Decisions-log entry for the R20 doc-scope policy.
+- Phase 9 close-out: `docs/code-conventions.md` created (P1-P12 lifted from `t1d-redesign.md` §7); R9 finished (`rolling_avg` + `s7` + `s1_dev` removed from `ml_model.py` and `predictor_test.py`); R14 finished (`ml_model.py` "TONIGHT'S DOSE RECOMMENDATION" block removed - missed in Phase 7's scoped grep); `improvements.md` B9 marked done; `architecture.md` reclassified `whoop_api_fetch.py` (Shared modules -> Fetch / refresh entry points); unused `os` import removed from `dexcom_loader.py`; `CLAUDE.md` Working preferences points at code-conventions.md.
+- Phase 9 correction: `docs/progress.md` restored after misjudged archiving (only 6 weeks old, not "over a year"; date-math error). Corrective decisions-log entry appended.
+- Post-Phase-9 spar with Thomas: 5 principle weaknesses + 5 implementation angles surfaced. Logged as `improvements.md` E11-E17.
+- E18 added: WAKE_HOUR 7 -> 06:20 (R22, the last un-shipped redesign item), gated on E10's fixed-vs-relative wake-anchor decision.
+- `docs/t1d-redesign.md` archived to `archive/docs_pre_redesign/`. Audit doc fully migrated: R1-R21 done, R22 = E18, P1-P12 = code-conventions.md.
+
+**Decided:**
+- R20 doc-scope policy formalised: architecture=WHAT/HOW, code-conventions=where-code-lives, decisions-log=WHY (immutable), improvements=backlog, session-log=per-session, CLAUDE.md=quick ref, memory=cross-session. Codified in `architecture.md` "Doc map" + the 2026-05-29 decisions-log entry.
+- P1-P12 promoted from audit-doc snapshot to durable home (`docs/code-conventions.md`). `t1d-redesign.md` §7 marked superseded.
+- Redesign considered complete when (a) R1-R22 done or explicitly tracked elsewhere AND (b) P1-P12 home is durable. Both now true; audit doc archived.
+- Doc-archiving requires explicit user ask, not unilateral judgement. (Triggered by `progress.md` mistake.) Date-math sanity check applies before claiming "stale".
+
+**Blocked:**
+- E12 (strain invariant #2 in P12 vs code that doesn't enforce it) is highest-value next item: either ship E1b NEEDS-line protocol or downgrade the invariant wording. Currently architecture.md asserts a property the code lacks.
+- E18 (WAKE_HOUR 7 -> 06:20) needs E10's fixed-vs-relative decision before code-change can ship.
+
+**Next (when Thomas resumes):**
+1. Pick from E11-E18 backlog. Recommended order: E13 (hookify reality-check, minutes) -> E12 (resolve the strain invariant lie) -> E14 (production-path smoke test) -> rest.
+2. E1b implementation is the biggest single unblock; resolving E12 likely pulls it forward.
+3. Models used this session: Sonnet 4.6 for mechanical phases (1-3, 7); Opus 4.7 for design / cross-cutting work (4-5, 8, 9 close-out audit + spar).
+
+**Commits this session:** `dc942f7` Phase 7 | `102833b` Phase 8 | `cbcf5e0` Phase 9 close-out | `e8e93a8` Phase 9 correction | `e092733` Archive redesign audit + E18.
