@@ -6,8 +6,9 @@ Bolus noise analysis:
    (partial correlation / residual analysis)
 4. Is the bolus effect mediated through inj_g, or independent of it?
 """
+from collections import defaultdict
 from datetime import timedelta
-from dexcom_loader import load_dexcom, load_bolus_events
+from dexcom_loader import load_dexcom, load_bolus_combined
 from night_stats import overnight_window, night_stats
 from stats_utils import spearman, linreg, residuals
 
@@ -21,8 +22,11 @@ def sig(p):
 
 
 def main():
-    glucose_list, basal_list, bolus_by_date = load_dexcom()
-    bolus_events = load_bolus_events()
+    glucose_list, basal_list, _ = load_dexcom()
+    bolus_events = load_bolus_combined()
+    bolus_by_date = defaultdict(float)
+    for dt, u in bolus_events:
+        bolus_by_date[dt.date()] += u
 
     # Build nightly dataset with bolus detail
     nights = []

@@ -11,6 +11,10 @@ from pathlib import Path
 DATA_DIR  = Path(__file__).resolve().parent.parent / 'data'
 DIAGNOSIS = date(2025, 4, 9)
 
+# Bolus sources cut over at this date: Clarity (manual G7 logs) is reliable
+# before; Glooko/NovoPen 6 picks up from 2026-01-31 onwards.
+NOVOPEN_CUTOVER = date(2026, 1, 31)
+
 
 def load_dexcom():
     """Read all Clarity_*.csv exports under DATA_DIR and return three structures.
@@ -121,3 +125,18 @@ def load_bolus_events():
                     if dt not in events:
                         events[dt] = u
     return sorted(events.items())
+
+
+def load_bolus_combined(cutover_date=NOVOPEN_CUTOVER):
+    """Bolus events from Clarity (pre-cutover) + Glooko/NovoPen (post-cutover).
+
+    Returns sorted [(datetime, units), ...]. Clarity supplies events strictly
+    before `cutover_date`; Glooko supplies events on or after.
+    """
+    from novopen_loader import load_glooko_bolus
+    clarity = load_bolus_events()
+    glooko  = load_glooko_bolus()
+    merged  = [(dt, u) for dt, u in clarity if dt.date() < cutover_date]
+    merged += [(dt, u) for dt, u in glooko  if dt.date() >= cutover_date]
+    merged.sort(key=lambda e: e[0])
+    return merged

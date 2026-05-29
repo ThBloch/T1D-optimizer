@@ -18,6 +18,7 @@ py -X utf8 tests/test_rules.py                        # 21 unit tests for thomas
 ## Structure
 ```
 data/                     Dexcom Clarity CSVs (semicolon, Danish locale)
+data/glooko/              Glooko export ZIPs unzipped here; NovoPen bolus lives in `Insulin data/insulin_data_1.csv`
 data/whoop_api/           WHOOP raw API responses (cycles/recovery/sleep/workouts.json)
 scripts/                  all active analysis code
 archive/whoop_csv/        old my_whoop_data_* directories (superseded by API)
@@ -31,7 +32,8 @@ output/                   generated reports (not committed)
 - `rules_model.py` — Thomas's rules backtest + Decision Tree comparison + tonight's suggestion
 - `predictor_test.py`, `ml_model.py`, `bolus_noise_test.py` — secondary analyses
 - `rules.py` — single source of truth for `thomas_rules()`; imported by dexcom_fetch + rules_model. Adjustments: hypo (priority over fasting), fasting tiers, activity (s1>=12), new pen (-1u). All stack except hypo blocks fasting tier.
-- `dexcom_loader.py` — shared Clarity CSV loader; returns `(glucose_list, basal_list, bolus_by_date)`. Warns at load time if any rows fail to parse.
+- `dexcom_loader.py` — shared Clarity CSV loader; returns `(glucose_list, basal_list, bolus_by_date)`. Also exposes `load_bolus_events()` (Clarity only) and `load_bolus_combined()` (Clarity pre-cutover + Glooko post-cutover). Warns at load time if any rows fail to parse.
+- `novopen_loader.py` — Glooko export loader; `load_glooko_bolus()` returns sorted `[(datetime, units), ...]` of NovoPen 6 injections with Glooko's Prime Detection rule applied (<=2u within 6 min of a following event = prime, dropped).
 - `whoop_loader.py` — shared WHOOP loader; reads `data/whoop_api/*.json` → `{date: {strain, recovery, hrv, rhr, sleep_perf}}`
 - `dose_diary.py` — read/upsert `data/doses.csv` (one row per dose-night)
 - `dexcom_fetch.py` — daily CGM fetch via `pydexcom`; anchors yesterday's dose with **Clarity > diary > prompt** priority; backfills overnight outcome; writes today's suggestion to diary. Flags: `--new-pen` (applies new-pen rule), `--no-hypo` (override CGM-detected hypos as sensor noise).
@@ -49,7 +51,7 @@ output/                   generated reports (not committed)
 - Paths derive from `__file__` — repo can move directories without code changes
 - Dexcom CSV: semicolon-delimited, Danish locale, mmol/L, comma decimals
 - Target: fasting 5–8 mmol/L | hypo <4.0 | hyper >10.0
-- Bolus logging gap: from 2026-01-31 (switched to NovoPen 6 — data not yet exported)
+- Bolus sources: Clarity CSV (manual G7-app entries) up to 2026-01-30; Glooko CSV export of NovoPen 6 from 2026-01-31 onwards. Combined via `dexcom_loader.load_bolus_combined()` (cutover constant `NOVOPEN_CUTOVER`). Glooko export currently manual; automation pending.
 - WHOOP in-progress cycle dating: indexed under start date, so `today_s1` lookup often returns None at dose time — fetch live via API when needed
 - WHOOP strain freshness: `score.strain` only updates on WHOOP app sync — check `updated_at`
 - Dose diary `data/doses.csv` is gitignored (under `data/`); Clarity-derived dose backfills it automatically when present
