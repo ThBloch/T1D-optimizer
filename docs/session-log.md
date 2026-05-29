@@ -352,3 +352,32 @@ D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sib
 3. E13 remains blocked on Thomas's observation, not on additional Claude-side work.
 
 **Commits this entry:** `6020368` E12 | `d3fa9a4` E16 | `880085d` E17.
+
+## 2026-05-29 (continued) e11-and-e15
+**Changed:**
+- **E11 (code-conventions P5-P10 polish + P5 refactor).** Sparred all four sub-decisions individually. P5: refactor (option b) - `_parse_offset` + `_parse_iso` + `_cycle_date` migrated from `whoop_loader.py` to new `scripts/whoop_cycles.py` (exported as `cycle_date_for`); Glooko Prime Detection (`PRIME_MAX_U`, `PRIME_WINDOW`, bidirectional lookahead) migrated from `novopen_loader.py` to new `scripts/bolus_classification.py` (exported as `filter_primes`). Both loaders import the helpers; P5 body extended to list the dedicated modules. P7+P8: hybrid form (generalised principle + listed current instances) + strict P8 ("disambiguator is required input"). P9: hybrid form + strict on `inferential_predictor.py` (lists required test files: `test_rules.py`, `test_night_stats.py`, `test_inferential_predictor.py`). P10: title rename "non-trivial changes" -> "rule and model changes" (body unchanged). New `tests/test_bolus_classification.py` with 8 cases for `filter_primes`. Refactor verified: `novopen_loader.py` __main__ output byte-identical to pre-refactor snapshot (342 injections, 96/131/115 by month); `whoop_loader.load_whoop()` returns same dict size (364 dates). Commit `a9df818`.
+- **E15 (bolus stream disjointness sanity check).** `bolus_classification.find_minute_unit_overlaps()` added; `dexcom_loader.load_bolus_combined()` log-warns when an event with the same `(minute, units)` appears in both Clarity Hurtig and Glooko ACS streams. Both events kept in the merged output (option a: log-warn, not filter or hard-fail). Minute-resolution matching chosen to catch near-duplicates from clock-skew between Clarity (second-resolution) and Glooko (minute-resolution) timestamps. 7 new test cases. Current dataset produces zero overlaps - the warning is dormant today, fires only if the "disjoint by construction" assumption breaks. Commit `8fa8f36`.
+- **Two follow-on backlog items added (from E11 strict readings):**
+  - **E19** - bolus disambiguator into `thomas_rules` (P8 strict follow-on, ~2-3h, E12-pattern).
+  - **E20** - `tests/test_inferential_predictor.py` (P9 strict follow-on, ~half day).
+
+**Decided:**
+- E11 P5: refactor over wording hedge. Two new modules - cost accepted to keep P5 a crisp rule rather than a slippery slope.
+- E11 P7+P8: hybrid form (principle + listed instances) - matches the style of P5's extended body. Same form now applied across P5, P7, P8, P9.
+- E11 P8 + P9: strict readings adopted intentionally - they surface follow-on code work (E19, E20) rather than absorbing it into E11.
+- E11 P10: cosmetic title rename only.
+- E15: log-warn, minute-resolution. Both events kept in output (no silent dedup). Detection helper in `bolus_classification.py` per P5, not inline in loader.
+
+**Blocked:**
+- E13 (hookify reality-check) - still awaiting your observation of whether the nudges have ever appeared in past sessions.
+- E18 (WAKE_HOUR 7 -> 06:20) - still gated on E10's fixed-vs-relative wake-anchor decision.
+
+**Next (when Thomas resumes):**
+1. **E5b** (`/session-done` slash command, ~30 min) - smallest remaining decided item; would automate the log-commit-push dance you ran four times today.
+2. **E19** (bolus disambiguator into `thomas_rules`, ~2-3h) - strict-P8 follow-on; same E12-pattern just shipped.
+3. **E14** (production-path smoke test, ~half day) - closes the integration-test gap that surfaced multiple times this session.
+4. **E1c** (rule audit + per-rule skip toggles) - line-by-line walkthrough of every threshold in `rules.py` with you; conversation-heavy but unblocks rule ownership cleanly.
+
+**Test count progression today:** 38 -> 62 (E17 +24) -> 70 (E11 +8) -> 77 (E15 +7).
+
+**Commits this entry:** `a9df818` E11 | `8fa8f36` E15.
