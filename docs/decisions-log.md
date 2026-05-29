@@ -67,3 +67,18 @@ Pre-existing entries below were written before the formal conventions were adopt
 **Status:** accepted
 **Decision:** Pushed local `master` (23 commits) to a private GitHub repo at https://github.com/ThBloch/T1D-optimizer - satisfies E2 path 1. Added `.gitattributes` with `* text=auto` to enforce LF in the repo regardless of any contributor's local Git config. Set `core.autocrlf=false` locally to silence the cosmetic LF/CRLF warnings now that `.gitattributes` makes the per-user setting irrelevant for normalization.
 **Why:** Backup + portability were the only immediate needs; public migration stays gated by quality bar + C1 sanitization (see prior 2026-05-21 entry). `.gitattributes` is the right layer for line-ending policy because it travels with the repo - the local `core.autocrlf` change only affects this machine and would be overridden by `.gitattributes` anyway on a fresh clone. Repo URL also captured in auto-memory `reference_github_repo.md` so future sessions don't have to grep `git remote -v`.
+
+## 2026-05-29 — Hypo-correction threshold raised from 7.0 to 10.0
+**Status:** accepted
+**Decision:** `night_stats.HYPO_CORRECTION_THR` raised from 7.0 to 10.0. A night is now only flagged as hypo-correction if glucose drops below 4.0 AND the subsequent peak exceeds 10.0 (not 7.0).
+**Why:** The 7.0 threshold was too sensitive - any mild rebound after a hypo triggered the flag, pulling nights from the clean pool even when the post-hypo glucose stayed well within range. 10.0 matches the clinical hyper threshold used throughout the codebase and aligns hypo-correction flagging with the nights that genuinely show a large artefact spike. Consequence: fewer nights excluded from the matching pool; count to be verified on next backtest run.
+
+## 2026-05-29 — Fasting +1u threshold lowered from 10.5 to 10.0
+**Status:** accepted
+**Decision:** `rules.FASTING_LO` lowered from 10.5 to 10.0. The +1u basal upward adjustment now triggers when fasting glucose is > 10.0 mmol/L instead of > 10.5 mmol/L.
+**Why:** The original 10.5 threshold was set conservatively during early data collection. With a year of data, the pattern is clear that fasting in the 10.0-10.5 range consistently trends upward over subsequent nights without a dose increase. Lowering to 10.0 catches these nights earlier and is consistent with the clinical hyperglycaemia threshold used in `tir_full`. Unit test `test_fasting_at_lo_boundary_no_change` updated to reflect new boundary.
+
+## 2026-05-29 — Bolus IQR exclusion removed from basal_analysis.py
+**Status:** accepted
+**Decision:** Removed the `iqr_bolus_outlier()` exclusion from `basal_analysis.py`. High-bolus nights are no longer excluded from the matching pool; only hypo-correction nights remain excluded.
+**Why:** The IQR exclusion was designed for the pre-NovoPen period when Clarity reliably logged all boluses. From 2026-01-31 the NovoPen 6 data is missing from Clarity, so the bolus data is incomplete and the IQR threshold is computed from a biased sample. Excluding based on an unreliable signal is worse than not excluding at all. The `[bolus]` annotation in the weekly summary is also removed. The `bolus` field is still loaded and stored per-night for future use once NovoPen data is integrated (Phase 4).

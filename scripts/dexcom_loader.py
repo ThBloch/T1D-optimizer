@@ -83,3 +83,41 @@ def load_dexcom():
     glucose_list = sorted(glucose.items())
     basal_list   = sorted([(v[0], d, v[1]) for d, v in basal_by_date.items()])
     return glucose_list, basal_list, bolus
+
+
+def load_bolus_events():
+    """Return sorted list of deduplicated individual bolus events.
+
+    Returns:
+      [(datetime, units), ...] sorted by timestamp, deduplicated by timestamp.
+
+    Parses the same Clarity CSV files as load_dexcom(). Use when you need
+    event-level timestamps (e.g. bolus in window before injection).
+    """
+    files = sorted(glob.glob(str(DATA_DIR / 'Clarity_*.csv')))
+    events = {}   # dt -> units, first-seen wins (dedup across overlapping exports)
+    for path in files:
+        with open(path, 'r', encoding='utf-8') as f:
+            for row in csv.reader(f, delimiter=';'):
+                if len(row) < 9:
+                    continue
+                ts    = row[1].strip().strip('"')
+                etype = row[2].strip().strip('"')
+                esub  = row[3].strip().strip('"')
+                ival  = row[8].strip().strip('"')
+                if not ts or 'T' not in ts:
+                    continue
+                try:
+                    dt = datetime.strptime(ts, '%Y-%m-%dT%H:%M:%S')
+                except ValueError:
+                    continue
+                if dt.date() < DIAGNOSIS:
+                    continue
+                if etype == 'Insulin' and ival and 'Hurtig' in esub:
+                    try:
+                        u = float(ival.replace(',', '.'))
+                    except ValueError:
+                        continue
+                    if dt not in events:
+                        events[dt] = u
+    return sorted(events.items())

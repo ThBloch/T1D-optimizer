@@ -4,77 +4,13 @@ Clean build: loads raw Dexcom + WHOOP, no prior assumptions.
 Run: py basal_analysis.py
 """
 
-import csv, glob, os, math
-from datetime import datetime, timedelta, date
-from collections import defaultdict
+import math
+from datetime import timedelta, date
 from whoop_loader import load_whoop
 from dexcom_loader import load_dexcom
-
-OVN_START = 22   # overnight window start hour
-OVN_END   = 7    # overnight window end hour (next day)
-HYPO_THR  = 4.0
-HYPER_THR = 10.0
-TGT_LO    = 5.0
-TGT_HI    = 8.0
+from night_stats import overnight_window, night_stats, TARGET_LO, TARGET_HI
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────
-def rolling_avg(d, n, index, key='strain'):
-    vals = [index[d - timedelta(days=i)][key]
-            for i in range(n)
-            if (d - timedelta(days=i)) in index and index[d - timedelta(days=i)][key] is not None]
-    return round(sum(vals) / len(vals), 2) if vals else None
-
-def overnight_glucose(inj_dt, glucose_list):
-    """Return readings from inj_dt through next 07:00."""
-    next_morning = datetime.combine(inj_dt.date() + timedelta(days=1),
-                                    datetime.min.time().replace(hour=OVN_END))
-    return [(dt, v) for dt, v in glucose_list if inj_dt <= dt <= next_morning]
-
-def compute_night_stats(readings):
-    if len(readings) < 6:
-        return None
-    vals = [v for _, v in readings]
-    n    = len(vals)
-
-    # Detect hypo-correction pattern:
-    # If glucose drops below 4.0 and then rises above 7.0, the post-hypo
-    # hyperglycemia is a correction artefact — dose-too-high signal, not
-    # a sign of insufficient basal.
-    hypo_idx = next((i for i, v in enumerate(vals) if v < HYPO_THR), None)
-    hypo_correction = False
-    correction_spike_above_10 = False
-    if hypo_idx is not None:
-        post = vals[hypo_idx:]
-        if max(post) > 7.0:
-            hypo_correction = True
-        if max(post) > HYPER_THR:
-            correction_spike_above_10 = True
-
-    tir      = round(sum(1 for v in vals if TGT_LO <= v <= TGT_HI) / n * 100, 1)
-    tir_full = round(sum(1 for v in vals if HYPO_THR <= v <= HYPER_THR) / n * 100, 1)
-    hypo_pct = round(sum(1 for v in vals if v < HYPO_THR) / n * 100, 1)
-    hyper_pct= round(sum(1 for v in vals if v > HYPER_THR) / n * 100, 1)
-
-    # Adjusted hyper: only count hyper% that is NOT a post-hypo correction spike
-    # These nights are dose-too-high, treating their hyper as a separate signal is wrong
-    hyper_adj = 0.0 if hypo_correction else hyper_pct
-
-    return {
-        'n_readings':           n,
-        'fasting':              round(vals[-1], 1),
-        'mean':                 round(sum(vals) / n, 1),
-        'min':                  round(min(vals), 1),
-        'max':                  round(max(vals), 1),
-        'tir':                  tir,
-        'tir_full':             tir_full,
-        'hypo_pct':             hypo_pct,
-        'hyper_pct':            hyper_pct,
-        'hyper_adj':            hyper_adj,        # hyper excluding correction spikes
-        'hypo_correction':      hypo_correction,  # True = dose was too high
-        'correction_spike_above_10': correction_spike_above_10,
-        'inj_g':                round(vals[0], 1),
-    }
-
 def spearman_r(x, y):
     n = len(x)
     if n < 3:
@@ -120,18 +56,6 @@ def linreg(x, y):
     return {'b0': round(b0, 3), 'b1': round(b1, 3), 'r2': round(r2, 3),
             'ci95': round(ci95, 3) if ci95 else None}
 
-def iqr_bolus_outlier(bolus_by_date, nights):
-    """Flag dates where bolus units are outliers (> Q3 + 1.5*IQR)."""
-    vals = sorted([bolus_by_date.get(d, 0) for d, _ in nights])
-    n = len(vals)
-    if n < 4:
-        return set()
-    q1 = vals[n // 4]
-    q3 = vals[3 * n // 4]
-    iqr = q3 - q1
-    threshold = q3 + 1.5 * iqr
-    return {d for d, _ in nights if bolus_by_date.get(d, 0) > threshold}
-
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 def run():
     print("=" * 65)
@@ -158,12 +82,11 @@ def run():
     for inj_dt, inj_date, dose in basal_list:
         if inj_dt.hour < 18:   # skip daytime basal — expect ~22:00
             continue
-        readings = overnight_glucose(inj_dt, glucose_list)
-        stats    = compute_night_stats(readings)
+        readings = overnight_window(inj_dt, glucose_list)
+        stats    = night_stats(readings)
         if stats is None:
             continue
         s1  = strain_by_date.get(inj_date, {}).get('strain')
-        s7  = rolling_avg(inj_date, 7, strain_by_date)
         hrv = strain_by_date.get(inj_date, {}).get('hrv')
         rec = strain_by_date.get(inj_date, {}).get('recovery')
         rhr = strain_by_date.get(inj_date, {}).get('rhr')
@@ -173,7 +96,6 @@ def run():
             'inj_dt':  inj_dt,
             'dose':    dose,
             's1':      s1,
-            's7':      s7,
             'hrv':     hrv,
             'recovery': rec,
             'rhr':     rhr,
@@ -187,26 +109,18 @@ def run():
     print(f"\n  Overnight nights with sufficient CGM data: {len(nights)}")
 
     # ── STEP 3: Exclude confounders ───────────────────────────────────────
-    # Two exclusion classes:
-    # 1. High-bolus nights (bolus confounder, r=-0.29 p<0.001)
-    # 2. Hypo-correction nights: dose was clearly too high — using these in
-    #    the matching pool would bias the dose range downward incorrectly.
-    #    They ARE kept in the weekly summary for visibility.
-    bolus_outlier_dates = iqr_bolus_outlier(bolus, [(n['date'], n) for n in nights])
-    hypo_corr_dates     = {n['date'] for n in nights if n['hypo_correction']}
-    excluded_dates      = bolus_outlier_dates | hypo_corr_dates
+    # Exclude hypo-correction nights: dose was clearly too high — using these
+    # in the matching pool would bias the dose range downward incorrectly.
+    # They ARE kept in the weekly summary for visibility.
+    hypo_corr_dates = {n['date'] for n in nights if n['hypo_correction']}
+    clean = [n for n in nights if n['date'] not in hypo_corr_dates]
 
-    clean = [n for n in nights if n['date'] not in excluded_dates]
-
-    bolus_excl_str = ', '.join(str(d) for d in sorted(bolus_outlier_dates)) or 'none'
-    print(f"  High-bolus nights excluded : {bolus_excl_str}")
     print(f"  Hypo-correction nights excl: {len(hypo_corr_dates)}  (dose-too-high signal, not used in matching)")
     print(f"  Clean nights for modeling  : {len(clean)}")
 
     # ── STEP 4: Tonight's profile ─────────────────────────────────────────
     today = g_end
     today_s1  = strain_by_date.get(today, {}).get('strain')
-    today_s7  = rolling_avg(today, 7, strain_by_date)
     today_hrv = strain_by_date.get(today, {}).get('hrv')
     today_rec = strain_by_date.get(today, {}).get('recovery')
 
@@ -225,7 +139,6 @@ def run():
     # Validated predictors (from predictor_test.py):
     #   inj_g  r=-0.36 ***  (strongest)
     #   s1     r=0.245 **
-    #   bolus  excluded above
     #   s7     r=0.078 ns  — dropped from matching
     #
     # Match on: inj_g ±2.5 mmol/L  AND  s1 ±3.0 (if today s1 available)
@@ -270,8 +183,8 @@ def run():
         tirs     = [n['tir']    for n in subset]
         hypos    = [n for n in subset if n['hypo_pct'] > 0]
         hypers   = [n for n in subset if n['hyper_pct'] > 0]
-        fasting_in_range = [n for n in subset if TGT_LO <= n['fasting'] <= TGT_HI]
-        mean_in_range    = [n for n in subset if TGT_LO <= n['mean']    <= TGT_HI]
+        fasting_in_range = [n for n in subset if TARGET_LO <= n['fasting'] <= TARGET_HI]
+        mean_in_range    = [n for n in subset if TARGET_LO <= n['mean']    <= TARGET_HI]
 
         best_tir = max(subset, key=lambda n: n['tir'])
 
@@ -337,7 +250,7 @@ def run():
         print(f"    Hypo nights  (<4.0):               {stats['hypo_nights_pct']}%")
         print(f"    Hyper nights (>10.0):              {stats['hyper_nights_pct']}%")
         print(f"  Best performing dose: {stats['best_dose']:.0f}u  (TIR {stats['best_tir']}%)")
-        print(f"  High-bolus excluded: {bolus_excl_str} | Hypo-correction nights excl: {len(hypo_corr_dates)}")
+        print(f"  Hypo-correction nights excl: {len(hypo_corr_dates)}")
         conf_reason = f"n={n_comp}" + (", wide dose spread" if stats['dose_max']-stats['dose_min']>8 else "")
         print(f"  Confidence: {conf} — {conf_reason}")
 
@@ -351,16 +264,14 @@ def run():
     print(f"\n{'='*65}")
     print(f"  WEEKLY PATTERN (last 7 nights, {today-timedelta(days=6)} → {today})")
     print(f"{'='*65}")
-    print(f"\n  {'Date':<12} {'Dose':>5}  {'S1':>5}  {'S7':>5}  {'Fasting':>8}  {'Mean':>6}  {'TIR%':>6}  {'Hypo%':>6}  {'Note'}")
-    print(f"  {'-'*85}")
+    print(f"\n  {'Date':<12} {'Dose':>5}  {'S1':>5}  {'Fasting':>8}  {'Mean':>6}  {'TIR%':>6}  {'Hypo%':>6}  {'Note'}")
+    print(f"  {'-'*78}")
 
     best_nights  = []
     worst_nights = []
 
     for n in last7:
-        exc = ''
-        if n['date'] in bolus_outlier_dates:   exc = ' [bolus]'
-        elif n['hypo_correction']:             exc = ' [hypo+correction]'
+        exc = ' [hypo+correction]' if n['hypo_correction'] else ''
         flag = ''
         if n['hypo_correction']:
             flag = 'DOSE>HIGH'
@@ -368,14 +279,13 @@ def run():
             flag = 'HYPO'
         elif n['hyper_adj'] > 50:
             flag = 'HYPER'
-        elif TGT_LO <= n['fasting'] <= TGT_HI and n['tir'] >= 70:
+        elif TARGET_LO <= n['fasting'] <= TARGET_HI and n['tir'] >= 70:
             flag = 'GOOD'
             best_nights.append(n)
         else:
             worst_nights.append(n)
         s1s = f"{n['s1']:.1f}" if n['s1'] else '-'
-        s7s = f"{n['s7']:.1f}" if n['s7'] else '-'
-        print(f"  {str(n['date']):<12} {n['dose']:>4.0f}u  {s1s:>5}  {s7s:>5}  "
+        print(f"  {str(n['date']):<12} {n['dose']:>4.0f}u  {s1s:>5}  "
               f"{n['fasting']:>7.1f}  {n['mean']:>5.1f}  {n['tir']:>5.1f}  "
               f"{n['hypo_pct']:>5.1f}  {flag}{exc}")
 
@@ -397,11 +307,9 @@ def run():
         print(f"  Best night:  {b['date']}  {b['dose']:.0f}u  fasting={b['fasting']} mean={b['mean']} TIR={b['tir']}%")
     if worst_nights:
         w = min(worst_nights, key=lambda n: n['tir'])
-        exc_note = " [bolus]" if w['date'] in bolus_outlier_dates else \
-                   " [hypo+correction]" if w['hypo_correction'] else ""
+        exc_note = " [hypo+correction]" if w['hypo_correction'] else ""
         print(f"  Worst night: {w['date']}  {w['dose']:.0f}u  fasting={w['fasting']} mean={w['mean']} TIR={w['tir']}%{exc_note}")
 
-    print(f"  High-bolus excluded: {bolus_excl_str}")
     print(f"  Hypo-correction nights in window: {sum(1 for n in last7 if n['hypo_correction'])}")
 
     # ── APPENDIX ──────────────────────────────────────────────────────────
@@ -434,11 +342,10 @@ def run():
                 print(f"  {label:<25} {reg['b1']:>7.3f}  {reg['r2']:>6.3f}  {ci_str:>10}")
 
         print(f"\n  Per-night detail (comparable nights, sorted by dose):")
-        print(f"  {'Date':<12} {'Dose':>5}  {'S7':>5}  {'Fasting':>8}  {'Mean':>6}  {'TIR%':>6}  {'Hypo%':>6}")
-        print(f"  {'-'*60}")
+        print(f"  {'Date':<12} {'Dose':>5}  {'Fasting':>8}  {'Mean':>6}  {'TIR%':>6}  {'Hypo%':>6}")
+        print(f"  {'-'*54}")
         for n in sorted(comparable, key=lambda x: x['dose']):
-            s7s = f"{n['s7']:.1f}" if n['s7'] else '-'
-            print(f"  {str(n['date']):<12} {n['dose']:>4.0f}u  {s7s:>5}  "
+            print(f"  {str(n['date']):<12} {n['dose']:>4.0f}u  "
                   f"{n['fasting']:>7.1f}  {n['mean']:>5.1f}  {n['tir']:>5.1f}  {n['hypo_pct']:>5.1f}")
     else:
         print(f"\n  n={n_comp} — insufficient for statistics. Need ≥5 comparable nights.")
@@ -446,7 +353,6 @@ def run():
     print(f"\n  Current context:")
     print(f"    Inj-time glucose = {inj_g_str}")
     print(f"    Today s1         = {today_s1}")
-    print(f"    Today s7         = {today_s7}  (not used for matching — not predictive)")
     print(f"    HRV              = {today_hrv}")
     print(f"    Recovery         = {today_rec}%")
     print(f"    Yesterday dose   = {yesterday_dose}u")

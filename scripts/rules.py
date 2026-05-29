@@ -4,7 +4,7 @@ Single source of truth. Imported by dexcom_fetch.py (nightly suggestion) and
 rules_model.py (backtest + ML threshold learning).
 """
 
-FASTING_LO   = 10.5
+FASTING_LO   = 10.0
 FASTING_MID  = 12.0
 FASTING_HI   = 14.0
 ACTIVITY_THR = 12.0

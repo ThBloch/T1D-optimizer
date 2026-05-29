@@ -29,8 +29,8 @@ class TestThomasRules(unittest.TestCase):
         self.assertEqual(dose, 21)
 
     def test_fasting_at_lo_boundary_no_change(self):
-        # Strict greater-than: 10.5 exactly is NOT > 10.5
-        dose, _ = thomas_rules(20, 10.5, 0, 5.0)
+        # Strict greater-than: 10.0 exactly is NOT > 10.0
+        dose, _ = thomas_rules(20, 10.0, 0, 5.0)
         self.assertEqual(dose, 20)
 
     def test_fasting_mid_tier_plus_two(self):

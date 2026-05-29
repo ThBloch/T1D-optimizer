@@ -12,16 +12,11 @@ from rules import thomas_rules
 from dose_diary import load_diary, save_diary, find_row, upsert_row, parse_dose, DIARY_PATH
 from whoop_loader import load_whoop
 from dexcom_loader import load_dexcom
+from night_stats import night_stats, second_half_trend, OVN_START, WAKE_HOUR
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CREDS_FILE   = PROJECT_ROOT / 'dexcom_creds.json'
-
-HYPO_THR  = 4.0
-TGT_LO    = 4.0   # TIR lower bound (matches rules_model.py)
-TGT_HI    = 10.0  # TIR upper bound
-OVN_START = 22    # basal injection hour (local)
-OVN_END   = 7     # fasting/wake hour (local)
 
 # ── CREDENTIALS ───────────────────────────────────────────────────────────────
 def load_creds():
@@ -49,38 +44,6 @@ def fetch_readings(username, password):
     return sorted([(r.datetime.replace(tzinfo=None), round(r.mmol_l, 1)) for r in raw],
                   key=lambda x: x[0])
 
-# ── OVERNIGHT STATS ───────────────────────────────────────────────────────────
-def overnight_stats(readings, inj_date):
-    """Stats for overnight window: OVN_START on inj_date through OVN_END next day."""
-    start = datetime(inj_date.year, inj_date.month, inj_date.day, OVN_START)
-    end   = datetime(inj_date.year, inj_date.month, inj_date.day + 1, OVN_END)
-    window = [(dt, v) for dt, v in readings if start <= dt <= end]
-    if len(window) < 4:
-        return None
-
-    vals = [v for _, v in window]
-    n    = len(vals)
-
-    hypo_events, in_hypo = 0, False
-    for v in vals:
-        if v < HYPO_THR and not in_hypo:
-            hypo_events += 1
-            in_hypo = True
-        elif v >= HYPO_THR:
-            in_hypo = False
-
-    tir = round(sum(1 for v in vals if TGT_LO <= v <= TGT_HI) / n * 100, 1)
-
-    return {
-        'inj_g':       vals[0],
-        'fasting':     vals[-1],
-        'mean':        round(sum(vals) / n, 1),
-        'min_g':       min(vals),
-        'tir':         tir,
-        'hypo_events': hypo_events,
-        'n_readings':  n,
-    }
-
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 def run():
     parser = argparse.ArgumentParser()
@@ -104,10 +67,14 @@ def run():
     latest_dt, latest_v = readings[-1]
     trend_note = f"  Current: {latest_v} mmol/L at {latest_dt.strftime('%H:%M')} ({latest_dt.date()})"
 
-    stats = overnight_stats(readings, yesterday)
+    start  = datetime(yesterday.year, yesterday.month, yesterday.day, OVN_START)
+    end    = datetime(yesterday.year, yesterday.month, yesterday.day + 1, WAKE_HOUR)
+    window = [(dt, v) for dt, v in readings if start <= dt <= end]
+    stats  = night_stats(window, min_readings=4)
+    sh_slope_raw, _, _ = second_half_trend(window)
 
     if stats is None:
-        print(f"\nNot enough readings for overnight window ({yesterday} {OVN_START}:00 -> {today} {OVN_END}:00).")
+        print(f"\nNot enough readings for overnight window ({yesterday} {OVN_START}:00 -> {today} {WAKE_HOUR}:00).")
         print(f"Readings available: {len(readings)} — oldest: {readings[0][0].strftime('%H:%M %d-%m')}")
         print(trend_note)
         return
@@ -117,8 +84,10 @@ def run():
     print(f"  Fasting (07:00)        : {stats['fasting']} mmol/L")
     print(f"  Mean overnight         : {stats['mean']} mmol/L")
     print(f"  Min glucose            : {stats['min_g']} mmol/L")
-    print(f"  TIR (4-10 mmol/L)      : {stats['tir']}%")
+    sh_slope = round(sh_slope_raw, 3) if sh_slope_raw is not None else ''
+    print(f"  TIR (4-10 mmol/L)      : {stats['tir_full']}%")
     print(f"  Hypo events (<4.0)     : {stats['hypo_events']}")
+    print(f"  2nd-half slope         : {sh_slope if sh_slope != '' else 'n/a'} mmol/L/h")
     print(f"  Readings in window     : {stats['n_readings']}")
     print(f"\n{trend_note}")
 
@@ -127,7 +96,8 @@ def run():
         'date':        str(yesterday),
         'fasting':     stats['fasting'],
         'hypo_events': stats['hypo_events'],
-        'tir_pct':     stats['tir'],
+        'tir_pct':     stats['tir_full'],
+        'sh_slope':    sh_slope,
     })
 
     yesterday_dose = None

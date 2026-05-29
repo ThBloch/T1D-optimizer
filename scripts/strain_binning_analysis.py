@@ -11,7 +11,6 @@ Run: py -X utf8 scripts/strain_binning_analysis.py
 """
 
 import sys
-from datetime import datetime, timedelta
 from pathlib import Path
 from statistics import mean, median
 
@@ -20,72 +19,17 @@ sys.path.insert(0, str(PROJECT_ROOT / 'scripts'))
 
 from dexcom_loader import load_dexcom
 from whoop_loader import load_whoop
+from night_stats import (overnight_window, night_stats, WAKE_HOUR,
+                         CLINICAL_TIR_LO, CLINICAL_TIR_HI,
+                         second_half_trend, SECOND_HALF_FRACTION, SH_MIN_READINGS)
 
-SECOND_HALF_FRACTION = 0.5
-SH_MIN_READINGS      = 10
-FLAT_BAND            = 0.3
-WAKE_HOUR            = 7
-HYPO_THR             = 4.0
-TGT_LO, TGT_HI       = 4.0, 10.0
+FLAT_BAND = 0.3
 MIN_USABLE_FULL_BINS = 80
 MIN_USABLE_REDUCED   = 50
 
 OUT_DIR  = PROJECT_ROOT / 'output'
 OUT_DIR.mkdir(exist_ok=True)
 OUT_FILE = OUT_DIR / 'strain_binning.txt'
-
-
-def overnight_window(inj_dt, glucose_list):
-    end = datetime.combine(inj_dt.date() + timedelta(days=1),
-                           datetime.min.time().replace(hour=WAKE_HOUR))
-    return [(dt, v) for dt, v in glucose_list if inj_dt <= dt <= end]
-
-
-def night_outcome(rdgs):
-    if len(rdgs) < 6:
-        return None
-    vals = [v for _, v in rdgs]
-    n = len(vals)
-    hypo_events = 0
-    in_hypo = False
-    for v in vals:
-        if v < HYPO_THR and not in_hypo:
-            hypo_events += 1
-            in_hypo = True
-        elif v >= HYPO_THR:
-            in_hypo = False
-    hypo_idx = next((i for i, v in enumerate(vals) if v < HYPO_THR), None)
-    hypo_correction = hypo_idx is not None and max(vals[hypo_idx:]) > 7.0
-    return {
-        'tir':              sum(1 for v in vals if TGT_LO <= v <= TGT_HI) / n * 100,
-        'fasting':          vals[-1],
-        'mean':             sum(vals) / n,
-        'inj_g':            vals[0],
-        'min_g':            min(vals),
-        'hypo_events':      hypo_events,
-        'hypo_correction':  hypo_correction,
-    }
-
-
-def second_half_trend(rdgs):
-    """Return (sh_slope_mmol_per_h, sh_delta_mmol, sh_n)."""
-    if not rdgs:
-        return None, None, 0
-    split = int(len(rdgs) * SECOND_HALF_FRACTION)
-    second = rdgs[split:]
-    sh_n = len(second)
-    if sh_n < SH_MIN_READINGS:
-        return None, None, sh_n
-    t0 = second[0][0]
-    xs = [(dt - t0).total_seconds() / 3600.0 for dt, _ in second]
-    ys = [v for _, v in second]
-    mx = sum(xs) / sh_n
-    my = sum(ys) / sh_n
-    num = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
-    den = sum((x - mx) ** 2 for x in xs)
-    slope = num / den if den > 0 else 0.0
-    delta = ys[-1] - ys[0]
-    return slope, delta, sh_n
 
 
 def classify_trend(slope):
@@ -115,7 +59,7 @@ def build_nights(glucose_list, basal_list, strain_idx):
         if inj_dt.hour < 18:
             continue
         rdgs = overnight_window(inj_dt, glucose_list)
-        st = night_outcome(rdgs)
+        st = night_stats(rdgs)
         if not st:
             continue
         slope, delta, sh_n = second_half_trend(rdgs)
@@ -194,7 +138,7 @@ def bin_summary(nights, edges, labels):
             'pct_down':        down / len(grp) * 100,
             'pct_flat':        flat / len(grp) * 100,
             'pct_up':          up / len(grp) * 100,
-            'mean_tir':        mean(n['tir'] for n in grp),
+            'mean_tir':        mean(n['tir_full'] for n in grp),
             'mean_fasting':    mean(n['fasting'] for n in grp),
             'hypo_rate':       hypo_nights / len(grp) * 100,
             'hyper_rate':      hyper_nights / len(grp) * 100,
@@ -399,7 +343,7 @@ def main():
                       else 'up' if b['mean_sh_slope'] > 0.05
                       else 'flat')
         tir_ok     = b['mean_tir'] >= 70
-        fasting_ok = TGT_LO <= b['mean_fasting'] <= TGT_HI
+        fasting_ok = CLINICAL_TIR_LO <= b['mean_fasting'] <= CLINICAL_TIR_HI
         if slope_sign != 'flat' and tir_ok and fasting_ok:
             conflicts += 1
             w(f'  {b["label"]:<6}: slope={slope_sign} ({b["mean_sh_slope"]:+.3f}), '
