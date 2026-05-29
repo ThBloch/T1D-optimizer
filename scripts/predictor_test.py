@@ -1,21 +1,12 @@
 """
-Predictor significance test — which variables predict overnight TIR%?
+Predictor significance test (research) - which variables predict overnight TIR%?
 Spearman correlation + Mann-Whitney median split A/B test on all candidates.
 """
 import math
-from datetime import timedelta
 from whoop_loader import load_whoop
 from dexcom_loader import load_dexcom
 from night_stats import overnight_window, night_stats
 from stats_utils import spearman
-
-
-def rolling_avg(d, n, idx):
-    v = [idx[d - timedelta(days=i)]['strain']
-         for i in range(n)
-         if (d - timedelta(days=i)) in idx
-         and idx[d - timedelta(days=i)]['strain'] is not None]
-    return round(sum(v) / len(v), 2) if v else None
 
 
 def mannwhitney_z(a, b):
@@ -76,14 +67,12 @@ def main():
         if not st:
             continue
         s1  = strain_idx.get(inj_date, {}).get('strain')
-        s7  = rolling_avg(inj_date, 7, strain_idx)
         hrv = strain_idx.get(inj_date, {}).get('hrv')
         rec = strain_idx.get(inj_date, {}).get('recovery')
         rhr = strain_idx.get(inj_date, {}).get('rhr')
-        s1_dev = round(s1 - s7, 2) if s1 is not None and s7 is not None else None
         nights.append({
             'date': inj_date, 'dose': dose,
-            's1': s1, 's7': s7, 's1_dev': s1_dev,
+            's1': s1,
             'hrv': hrv, 'recovery': rec, 'rhr': rhr,
             'bolus': bolus.get(inj_date, 0),
             **st
@@ -94,9 +83,7 @@ def main():
     # ── MAIN TEST ──────────────────────────────────────────────────────────────────
     candidates = [
         ('inj_g',    'Injection-time glucose'),
-        ('s7',       '7-day avg strain'),
         ('s1',       'Today strain (s1)'),
-        ('s1_dev',   'Today vs 7d (s1-s7)'),
         ('bolus',    'Bolus units that day'),
         ('hrv',      'HRV (ms)'),
         ('recovery', 'Recovery score %'),
@@ -128,40 +115,8 @@ def main():
                   f'{str(z):>7}  {str(pm):>8}  {sig_stars(pm):>3}  '
                   f'{str(lom):>8}  {str(him):>8}  (split at {med})')
 
-    # ── INTERACTION TEST: inj_g x s7 ──────────────────────────────────────────────
-    print()
-    print('=' * 60)
-    print('INTERACTION: inj_g + s7 combined vs TIR')
-    print('=' * 60)
-
-    # Quadrant split: low/high inj_g x low/high s7
-    med_inj = sorted(n['inj_g'] for n in nights)[len(nights) // 2]
-    med_s7  = sorted(n['s7']  for n in nights if n['s7'] is not None)[len([n for n in nights if n['s7'] is not None]) // 2]
-
-    groups = {
-        'low_inj + low_s7':  [n['tir'] for n in nights if n['inj_g'] <= med_inj and n['s7'] is not None and n['s7'] <= med_s7],
-        'low_inj + high_s7': [n['tir'] for n in nights if n['inj_g'] <= med_inj and n['s7'] is not None and n['s7'] > med_s7],
-        'high_inj + low_s7': [n['tir'] for n in nights if n['inj_g'] > med_inj  and n['s7'] is not None and n['s7'] <= med_s7],
-        'high_inj + high_s7':[n['tir'] for n in nights if n['inj_g'] > med_inj  and n['s7'] is not None and n['s7'] > med_s7],
-    }
-    print(f'Median inj_g = {med_inj}  |  Median s7 = {med_s7}')
-    print()
-    for label, vals in groups.items():
-        if vals:
-            m = round(sum(vals)/len(vals), 1)
-            print(f'  {label:<22}  n={len(vals):>3}  mean TIR={m}%')
-
-    # Compare low_inj vs high_inj within each s7 half
-    print()
-    for s7_label, s7_cond in [('low_s7', lambda n: n['s7'] is not None and n['s7'] <= med_s7),
-                                ('high_s7', lambda n: n['s7'] is not None and n['s7'] > med_s7)]:
-        sub = [n for n in nights if s7_cond(n)]
-        lo  = [n['tir'] for n in sub if n['inj_g'] <= med_inj]
-        hi  = [n['tir'] for n in sub if n['inj_g'] > med_inj]
-        z, p = mannwhitney_z(lo, hi)
-        print(f'  inj_g effect within {s7_label}: MW z={z}  p={p}  {sig_stars(p)}  '
-              f'(low_inj mean={round(sum(lo)/len(lo),1) if lo else None}, '
-              f'high_inj mean={round(sum(hi)/len(hi),1) if hi else None})')
+    # Richer interaction modelling (dose x s1, bolus effects) lives in
+    # scripts/inferential_predictor.py (Phase 5 / R8).
 
 
 if __name__ == '__main__':

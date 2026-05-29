@@ -339,6 +339,12 @@ The slope-based fasting rule is a real structural change, not a duplication issu
 
 ## 7. Proposed principles
 
+**Note (2026-05-29):** P1-P12 below are superseded by
+`docs/code-conventions.md` as the durable home. The text here is
+preserved as the historical audit snapshot; edits go in
+`code-conventions.md` plus a decisions-log entry.
+
+
 ### P1. One source of truth per concept
 
 Every concept gets one place:

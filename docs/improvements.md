@@ -8,7 +8,7 @@ Read this before proposing new refactors.
 
 ## B. Code hardening
 
-- [ ] B9. Rename shadowed `TGT_LO` / `TGT_HI` - value 5/8 in `basal_analysis.py` (user goal) vs 4/10 in `rules_model.py` + `dexcom_fetch.py` (clinical TIR). Different intent, same name. (deferred: low value-for-effort)
+- [x] B9. Rename shadowed `TGT_LO` / `TGT_HI` - done as part of Phase 1 redesign (R5). Constants renamed to `TARGET_LO` / `TARGET_HI` (user goal, 5-8) and `CLINICAL_TIR_LO` / `CLINICAL_TIR_HI` (clinical TIR, 4-10), both centralised in `night_stats.py`.
 - [ ] B10. Fix bolus dedup precision - exact `(datetime, units)` tuple, 1-second timestamp drift across exports double-counts. Round to minute or dedup by `(date, hour, units)`. (deferred: low value-for-effort)
 - [ ] B11. Widen `whoop_api_fetch.py` retry net beyond 429 - handle 401 token-expired, 5xx server errors. Per-endpoint isolation so one failure doesn't kill the other three. (deferred: low value-for-effort)
 

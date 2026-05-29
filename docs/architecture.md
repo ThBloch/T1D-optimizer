@@ -2,8 +2,10 @@
 
 What the T1D basal optimizer is, how its parts fit together, and where each
 signal comes from. For *why* a particular threshold or rule exists, read
-`decisions-log.md`. For *open work*, read `improvements.md`. This doc does
-not restate values that live in code - it points at the file and line.
+`decisions-log.md`. For *open work*, read `improvements.md`. For the
+principles that decide where each kind of code/constant/rule lives, see
+`code-conventions.md`. This doc does not restate values that live in
+code - it points at the file and line.
 
 ---
 
@@ -49,11 +51,11 @@ discipline; do not duplicate across files.
 | File | Scope |
 |---|---|
 | `docs/architecture.md` (this file) | WHAT the components are and HOW they connect |
+| `docs/code-conventions.md` | P1-P12: where each kind of code, constant, rule, or test lives |
 | `docs/decisions-log.md` | WHY a decision was made. Immutable history; new decisions append. |
 | `docs/improvements.md` | Backlog of open work. Status `[ ]` / `[x]` / `[-]`. |
 | `docs/session-log.md` | Per-session log of changes, decisions, blockers, next steps |
-| `docs/progress.md` | Long-form narrative milestones (legacy; lightly maintained) |
-| `docs/t1d-redesign.md` | 2026-05-28 audit + R-series source for current phased rewrite |
+| `docs/t1d-redesign.md` | 2026-05-28 audit (snapshot). P1-P12 superseded by `code-conventions.md`. |
 | `CLAUDE.md` | Quick reference for running the scripts; project conventions |
 | Memory at `~/.claude/projects/D--claude-t1d/memory/` | Cross-session patterns (user, feedback, project, reference) |
 
@@ -95,7 +97,12 @@ file and line.
 | `scripts/dexcom_loader.py` | Clarity CSV parser - `load_dexcom()`, `load_bolus_events()`, `load_bolus_combined()` |
 | `scripts/novopen_loader.py` | Glooko CSV parser with prime detection - `load_glooko_bolus()` |
 | `scripts/whoop_loader.py` | WHOOP JSON cache reader - `load_whoop()` |
-| `scripts/whoop_api_fetch.py` | Incremental WHOOP cache refresh via `whoop-sdk` |
+
+### Fetch / refresh scripts (entry points)
+
+| Script | Role |
+|---|---|
+| `scripts/whoop_api_fetch.py` | Incremental WHOOP cache refresh via `whoop-sdk` (4 endpoints, 7-day overlap cursor) |
 
 ### External
 

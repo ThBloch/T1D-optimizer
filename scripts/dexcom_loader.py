@@ -3,7 +3,7 @@
 Single source of truth for parsing Clarity exports (semicolon-delimited,
 Danish locale, mmol/L with comma decimals). Imported by all analysis scripts.
 """
-import csv, glob, os
+import csv, glob
 from datetime import datetime, date
 from collections import defaultdict
 from pathlib import Path

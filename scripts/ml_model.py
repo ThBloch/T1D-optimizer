@@ -1,18 +1,17 @@
 """
-T1D Basal ML Model — Thomas Bloch-Nielsen
-==========================================
-Predicts overnight TIR% given (inj_g, s1, dose).
-Optimizes over dose at recommendation time to suggest tonight's dose.
+T1D Basal ML Model (research)
+=============================
+Predicts overnight TIR% given (inj_g, s1, dose). Compares pipeline models
+against a naive-mean baseline. Reports feature importance and per-night
+residuals. Not the production path; see dexcom_fetch.py for suggestion.
 
 Approach:
   - Features: inj_g, s1 (imputed with median when missing), dose
-  - Target: TIR% (5–8 mmol/L)
+  - Target: TIR% (5-8 mmol/L)
   - Time-based 80/20 train/test split (no leakage)
   - Models: Linear baseline, Random Forest, Gradient Boosting
-  - Recommendation: predict TIR for dose 14–30u given tonight's profile
 """
 
-from datetime import timedelta
 from whoop_loader import load_whoop
 from dexcom_loader import load_dexcom
 from night_stats import overnight_window, night_stats
@@ -25,12 +24,6 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.inspection import permutation_importance
-
-
-def rolling_avg(d, n, idx):
-    v=[idx[d-timedelta(days=i)]['strain'] for i in range(n)
-       if (d-timedelta(days=i)) in idx and idx[d-timedelta(days=i)]['strain'] is not None]
-    return round(sum(v)/len(v),2) if v else None
 
 
 def main():
@@ -48,17 +41,15 @@ def main():
         hrv = strain_idx.get(inj_date, {}).get('hrv')
         rec = strain_idx.get(inj_date, {}).get('recovery')
         rhr = strain_idx.get(inj_date, {}).get('rhr')
-        s7  = rolling_avg(inj_date, 7, strain_idx)
         nights.append({
             'date':     inj_date,
             'dose':     dose,
             'inj_g':    st['inj_g'],
             's1':       s1,
-            's7':       s7,
             'hrv':      hrv,
             'recovery': rec,
             'rhr':      rhr,
-            'tir':      st['tir'],       # 5-8 target range
+            'tir':      st['tir'],
             'fasting':  st['fasting'],
             'mean_g':   st['mean'],
         })
@@ -69,7 +60,7 @@ def main():
 
     # ── FEATURES ───────────────────────────────────────────────────────────────────
     # Core features: inj_g, s1, dose
-    # Extended: + hrv, recovery, rhr, s7
+    # Extended: + hrv, recovery, rhr
     # s1 missing in ~5% of nights — imputed with median in pipeline
 
     FEATURES_CORE = ['inj_g', 's1', 'dose']
@@ -187,46 +178,6 @@ def main():
     for i, fname in enumerate(FEATURES_CORE):
         print(f'  {fname:<12}  mean decrease MAE: {perm.importances_mean[i]:+.2f}  '
               f'std: {perm.importances_std[i]:.2f}')
-
-    # ── TONIGHT'S RECOMMENDATION ───────────────────────────────────────────────────
-    print('\n' + '='*65)
-    print('TONIGHT\'S DOSE RECOMMENDATION')
-    print('='*65)
-
-    # Get tonight's profile from latest CGM
-    today = max(dt.date() for dt, _ in glucose_list)
-    tonight_inj_g = next((v for dt,v in reversed(glucose_list) if dt.date()==today), None)
-    today_s1 = strain_idx.get(today, {}).get('strain')
-
-    print(f'\n  Tonight inj_g : {tonight_inj_g:.1f} mmol/L' if tonight_inj_g else '\n  Tonight inj_g : unknown')
-    print(f'  Tonight s1    : {today_s1:.1f}' if today_s1 else '  Tonight s1    : not yet available (using median imputation)')
-
-    # Predict TIR for each candidate dose
-    candidate_doses = list(range(14, 31))
-    profile = [[tonight_inj_g if tonight_inj_g else 9.0,
-                today_s1 if today_s1 else float('nan'),
-                d] for d in candidate_doses]
-    X_pred = np.array(profile, dtype=float)
-    tir_preds = best_model.predict(X_pred)
-
-    print(f'\n  Predicted TIR% by dose ({best_name}):')
-    print(f'  {"Dose":>5}  {"Pred TIR%":>10}  {"Bar"}')
-    print(f'  {"-"*45}')
-    best_dose_idx = int(np.argmax(tir_preds))
-    for i, (d, t) in enumerate(zip(candidate_doses, tir_preds)):
-        bar = '#' * max(0, int(t / 2))
-        marker = ' <-- BEST' if i == best_dose_idx else ''
-        print(f'  {d:>4}u  {t:>9.1f}%  {bar}{marker}')
-
-    print(f'\n  Model recommendation: {candidate_doses[best_dose_idx]}u  '
-          f'(predicted TIR {tir_preds[best_dose_idx]:.1f}%)')
-
-    # Uncertainty: show ±1 dose range above 80% of peak prediction
-    peak = tir_preds[best_dose_idx]
-    threshold = peak * 0.90
-    good_doses = [d for d, t in zip(candidate_doses, tir_preds) if t >= threshold]
-    if len(good_doses) > 1:
-        print(f'  Doses within 90% of peak TIR: {min(good_doses)}–{max(good_doses)}u')
 
     # ── BASELINE COMPARISON ────────────────────────────────────────────────────────
     print('\n' + '='*65)

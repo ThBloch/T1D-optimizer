@@ -72,6 +72,7 @@ The `decisions-log-reminder` hookify rule reminds at session end if `scripts/*.p
 
 ## Working preferences
 - Read `docs/improvements.md` before proposing new refactors.
+- Read `docs/code-conventions.md` before adding new scripts, constants, or rule branches - P1-P12 decide where each thing lives.
 - Reference file paths instead of pasting file contents.
 
 ## Compaction
