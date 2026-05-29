@@ -31,6 +31,8 @@ output/                   generated reports (not committed)
 - `basal_analysis.py` — main analysis (matching model, weekly pattern, tonight's range)
 - `rules_model.py` — Thomas's rules backtest + Decision Tree comparison + tonight's suggestion
 - `predictor_test.py`, `ml_model.py`, `bolus_noise_test.py` — secondary analyses
+- `inferential_predictor.py` — Phase 5 / R8 analysis: chooses best slope-vs-signals model spec via F-test, computes per-night inferred optimal dose, ranks candidate signals via direct + partial + inferential Spearman with convergence-based tier (HIGH/MED/LOW). Output to `output/inferential_predictor.txt`.
+- `strain_binning_analysis.py`, `strain_regression_analysis.py` — Phase A2 strain → slope analyses; the regression module exposes `fit_ols` for reuse.
 - `rules.py` — single source of truth for `thomas_rules()`; imported by dexcom_fetch + rules_model. Adjustments: hypo (priority over fasting), fasting tiers, activity (s1>=12), new pen (-1u). All stack except hypo blocks fasting tier.
 - `dexcom_loader.py` — shared Clarity CSV loader; returns `(glucose_list, basal_list, bolus_by_date)`. Also exposes `load_bolus_events()` (Clarity only) and `load_bolus_combined()` (Clarity pre-cutover + Glooko post-cutover). Warns at load time if any rows fail to parse.
 - `novopen_loader.py` — Glooko export loader; `load_glooko_bolus()` returns sorted `[(datetime, units), ...]` of NovoPen 6 injections with Glooko's Prime Detection rule applied (<=2u within 6 min of a following event = prime, dropped).

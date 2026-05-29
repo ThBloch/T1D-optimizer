@@ -102,3 +102,23 @@ Pre-existing entries below were written before the formal conventions were adopt
 **Status:** accepted
 **Decision:** `dexcom_loader.load_bolus_combined()` now concatenates Clarity Hurtig events and Glooko ACS* (smart-pen) events across all dates and sorts by timestamp. No cutover date, no dedup. The previous `NOVOPEN_CUTOVER = 2026-01-31` constant is removed. Supersedes the earlier "NovoPen 6 bolus source via Glooko export (R13)" entry from today.
 **Why:** Thomas confirmed (2026-05-29) that he uses both a regular pen (manually logged in the Dexcom G7 app -> Clarity) and a smart NovoPen 6 (NFC -> Glooko) interchangeably going forward, with the smart pen most of the time. There is no single switch date. The two sources are disjoint by construction at the event level: Clarity Hurtig rows have `Kildeenheds id = "android G7"` (manual entries only - confirmed across every historical Clarity CSV), and `novopen_loader.load_glooko_bolus()` filters to ACS-prefix serials only (skipping the Dexcom-source rows that Glooko ingests). Therefore a naive concatenation gives the full picture without double-counting. Verified: only 1 calendar day (2026-03-05) ever had bolus events in both streams, and they were at non-overlapping times.
+
+## 2026-05-29 — Phase 5 inferential predictor: M3 (dose*s1) chosen as best-supported spec
+**Status:** accepted
+**Decision:** `scripts/inferential_predictor.py` compares four nested model specs (M1 linear additive baseline, M2 + s1^2, M3 + dose*s1 interaction, M4 + both) and selects via F-test against the next-simpler nested model with the constraint that `beta_dose` retains p<0.10. M3 selected on current 288-night sample: R^2 = 0.064 (vs M1's 0.048), F-test M3 vs M1 p=0.029, beta_dose p=0.020, beta_(dose*s1) p=0.029. M2 (s1^2 alone) and M4 (both terms) failed their F-tests.
+**Why:** The Phase A2 baseline (M1) has beta_dose p=0.42, which makes the inferred-optimal-dose computation unreliable. Adding the dose*s1 interaction makes dose significant and lifts R^2 by ~33% relatively, with a passing F-test. The biological story is that dose's effect on second-half slope is moderated by strain: at high strain, the same dose has a different relationship to overnight slope (consistent with the existing activity rule). M3 is now the model used to invert sh_slope=0 for "what dose would have flattened tonight". Re-run when sample grows materially; if a future dataset breaks M3's F-test or beta_dose significance, the script will fall back automatically.
+
+## 2026-05-29 — Phase 5 signal ranking: 7 signals promoted to Phase 6 rule design
+**Status:** accepted
+**Decision:** Convergent ranking from `inferential_predictor.py` (direct Spearman vs sh_slope; partial Spearman after removing s1, prev_dose, inj_g; Spearman vs M3 inferred optimal dose). Promotion tiers on 288 usable nights:
+- **HIGH (>=2/3 metrics p<0.05 same direction):** `s1` (strain), `recovery`, `hrv`, `rhr`, `inj_g`, `bolus_4h_pre`, `bolus_during_night`.
+- **MED (1/3):** `sleep_perf`, `prev_dose`, `prev_fasting`.
+- **LOW (0/3):** `prev_hypos`, `hypo_events_tonight`.
+
+Phase 6 rule design works from the HIGH list. MED signals are watched but not encoded in the first rule iteration. LOW signals are dropped from the candidate set.
+**Why:** Same-direction agreement across three independent measurement angles is stronger evidence than any single test, given the chosen-model R^2 is still only 0.064 (most slope variance is unexplained). Notable findings: (a) bolus_4h_pre AND bolus_during_night both clear HIGH - the slope rule's framing (bolus needed for disambiguation) is empirically supported; (b) inj_g passes via direct + inferential despite partial r ~ 0 (it IS one of the controls so partial is ~0 by construction - not a refutation); (c) prev_hypos / hypo_events_tonight are too rare to carry signal in this sample - revisit if hypo frequency rises.
+
+## 2026-05-29 — WHOOP stress endpoint not exposed by whoop-sdk 0.3.1 (R21 closed for now)
+**Status:** accepted
+**Decision:** WHOOP stress not added as a Phase 5 candidate. `whoop-sdk` v0.3.1 exposes only cycles, recovery, sleep, workouts, body measurements, and profile - no stress endpoint. Path 2 fallback (derive a "stress proxy" from HRV) declined: HRV is already a candidate signal in its own right; relabeling it as "stress" would mislead more than inform.
+**Why:** WHOOP's mobile app has a Stress Monitor feature but it is not exposed in the public Developer API as of the installed SDK version. Building a custom auth/scraping path against the mobile app is out of scope for Phase 5 and not warranted unless HRV alone proves insufficient in Phase 6 rule testing. Revisit when whoop-sdk publishes a stress endpoint, or if Phase 6 evidence demands a separate stress channel.
