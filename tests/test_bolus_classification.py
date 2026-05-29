@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'scripts'))
 
-from bolus_classification import filter_primes, PRIME_MAX_U, PRIME_WINDOW
+from bolus_classification import filter_primes, find_minute_unit_overlaps, PRIME_MAX_U, PRIME_WINDOW
 
 
 T0 = datetime(2026, 1, 1, 12, 0)
@@ -67,6 +67,47 @@ class TestFilterPrimes(unittest.TestCase):
         e_above       = [_at(0, 1.0), _at(window_minutes + 1, 10.0)]
         self.assertEqual(filter_primes(e_at_boundary), [_at(window_minutes, 10.0)])
         self.assertEqual(filter_primes(e_above), e_above)
+
+
+class TestFindMinuteUnitOverlaps(unittest.TestCase):
+
+    def test_both_empty(self):
+        self.assertEqual(find_minute_unit_overlaps([], []), [])
+
+    def test_one_side_empty(self):
+        events = [_at(0, 5.0), _at(10, 7.0)]
+        self.assertEqual(find_minute_unit_overlaps(events, []), [])
+        self.assertEqual(find_minute_unit_overlaps([], events), [])
+
+    def test_exact_minute_and_units_matches(self):
+        a = [_at(0, 5.0), _at(30, 7.0)]
+        b = [_at(0, 5.0)]  # same minute + same units
+        self.assertEqual(find_minute_unit_overlaps(a, b), [_at(0, 5.0)])
+
+    def test_same_minute_different_units_no_match(self):
+        a = [_at(0, 5.0)]
+        b = [_at(0, 6.0)]  # same minute, different units
+        self.assertEqual(find_minute_unit_overlaps(a, b), [])
+
+    def test_different_minutes_same_units_no_match(self):
+        a = [_at(0, 5.0)]
+        b = [_at(10, 5.0)]  # different minute
+        self.assertEqual(find_minute_unit_overlaps(a, b), [])
+
+    def test_second_level_skew_within_same_minute_matches(self):
+        # Clarity has second-resolution; Glooko is minute-resolution.
+        # An event at 12:00:30 (Clarity) should match an event at
+        # 12:00:00 (Glooko) on the same-minute rule.
+        anchor = datetime(2026, 1, 1, 12, 0, 30)
+        a = [(anchor, 5.0)]
+        b = [(datetime(2026, 1, 1, 12, 0, 0), 5.0)]
+        self.assertEqual(find_minute_unit_overlaps(a, b), b)
+
+    def test_minute_boundary_not_matched(self):
+        # 12:00:59 and 12:01:00 are in different minutes - no match.
+        a = [(datetime(2026, 1, 1, 12, 0, 59), 5.0)]
+        b = [(datetime(2026, 1, 1, 12, 1, 0), 5.0)]
+        self.assertEqual(find_minute_unit_overlaps(a, b), [])
 
 
 if __name__ == '__main__':

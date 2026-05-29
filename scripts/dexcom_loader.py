@@ -132,9 +132,26 @@ def load_bolus_combined():
     Glooko's pen-source rows, and smart-pen events never reach Clarity's
     raw CSV. No cutover or dedup needed.
 
+    Emits a log-warn (does NOT filter) when a same-(minute, units)
+    event appears in both streams - that would indicate the
+    disjoint-by-construction assumption has broken (e.g. a future
+    Glooko upgrade ingests G7-app data).
+
     Returns sorted [(datetime, units), ...].
     """
     from novopen_loader import load_glooko_bolus
-    merged = list(load_bolus_events()) + list(load_glooko_bolus())
+    from bolus_classification import find_minute_unit_overlaps
+    clarity = list(load_bolus_events())
+    glooko  = list(load_glooko_bolus())
+    overlaps = find_minute_unit_overlaps(clarity, glooko)
+    if overlaps:
+        print(f'[dexcom_loader] WARNING: {len(overlaps)} bolus event(s) appear '
+              f'in BOTH Clarity and Glooko streams (matched on (minute, units)). '
+              f'Streams previously disjoint by construction - investigate.')
+        for dt, u in overlaps[:5]:
+            print(f'  {dt} - {u}u')
+        if len(overlaps) > 5:
+            print(f'  ... and {len(overlaps) - 5} more')
+    merged = clarity + glooko
     merged.sort(key=lambda e: e[0])
     return merged

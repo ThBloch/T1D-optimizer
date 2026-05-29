@@ -143,10 +143,7 @@ Risks across E5-E9: MFA on Clarity, Dexcom ToS on automated access, UI brittlene
   - Approach: fixture-based smoke under `tests/fixtures/` - synthetic CGM + WHOOP + Clarity snapshot (no real medical data) -> assert produced suggestion + diary delta. Stub Dexcom Share API or skip live fetch.
   - Effort: ~half a day to set up fixtures; ongoing cost low.
 
-- [ ] E15. Bolus stream disjointness sanity check at merge time.
-  - `dexcom_loader.load_bolus_combined()` assumes Clarity Hurtig and Glooko ACS streams are disjoint by construction (verified empirically 2026-05-29: 1 day overlap with non-overlapping times). This is a current-vendor property, not a guarantee - if Glooko ever ingests G7-app entries (Dexcom partnership), silent double-count.
-  - Decision: log-warn on overlap, hard-fail, or skip the duplicate. Lean: log-warn with the overlapping `(date, units, source)` tuples so the next session sees the warning.
-  - Approach: at merge time, count events with same `(minute, units)` across both streams; emit one log line if non-zero.
+- [x] E15. Bolus stream disjointness sanity check at merge time. Resolved 2026-05-29: `bolus_classification.find_minute_unit_overlaps()` added; `dexcom_loader.load_bolus_combined()` calls it after merging Clarity + Glooko streams. Emits a `[dexcom_loader] WARNING:` line listing overlapping `(datetime, units)` tuples when any match. Log-warn behaviour (option a) - both events kept in the merged output. 7 new tests in `tests/test_bolus_classification.py`. Current dataset produces zero overlaps. See decisions-log 2026-05-29.
 
 - [x] E16. Memory vs decisions-log overlap policy. Resolved 2026-05-29: policy codified in `docs/code-conventions.md` under "Knowledge stores: memory and decisions-log". Decisions-log is canonical; memories carry plain-text `Recorded in docs/decisions-log.md YYYY-MM-DD` cross-references when their content corresponds to a decisions-log entry. Applied to the four overlapping memories today. See decisions-log 2026-05-29.
 

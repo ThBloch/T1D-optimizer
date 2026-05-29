@@ -48,3 +48,18 @@ def filter_primes(events):
         (dt, u) for i, (dt, u) in enumerate(events)
         if not (u <= PRIME_MAX_U and _has_neighbor_within_window(events, i))
     ]
+
+
+def find_minute_unit_overlaps(events_a, events_b):
+    """Return events from `events_b` that match an entry in `events_a`
+    on (minute, units).
+
+    Each event is a (datetime, units) tuple. Minute-resolution
+    matching catches near-duplicates from clock-skew between
+    second-resolution Clarity timestamps and minute-resolution Glooko
+    timestamps. Used by `dexcom_loader.load_bolus_combined()` as a
+    runtime sanity check on the disjoint-by-construction assumption.
+    """
+    key = lambda ev: (ev[0].replace(second=0, microsecond=0), ev[1])
+    a_keys = {key(e) for e in events_a}
+    return [e for e in events_b if key(e) in a_keys]
