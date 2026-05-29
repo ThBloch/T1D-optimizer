@@ -95,8 +95,10 @@ file and line.
 | `scripts/stats_utils.py` | `spearman()`, `linreg()`, `residuals()` |
 | `scripts/config.py` | `DIAGNOSIS_START` |
 | `scripts/dexcom_loader.py` | Clarity CSV parser - `load_dexcom()`, `load_bolus_events()`, `load_bolus_combined()` |
-| `scripts/novopen_loader.py` | Glooko CSV parser with prime detection - `load_glooko_bolus()` |
-| `scripts/whoop_loader.py` | WHOOP JSON cache reader - `load_whoop()` |
+| `scripts/novopen_loader.py` | Glooko CSV parser - `load_glooko_bolus()` (delegates classification to `bolus_classification`) |
+| `scripts/bolus_classification.py` | Glooko Prime Detection rule - `filter_primes(events)` |
+| `scripts/whoop_loader.py` | WHOOP JSON cache reader - `load_whoop()` (delegates date mapping to `whoop_cycles`) |
+| `scripts/whoop_cycles.py` | WHOOP cycle-to-local-date mapping - `cycle_date_for(cycle)` |
 
 ### Fetch / refresh scripts (entry points)
 

@@ -35,7 +35,9 @@ output/                   generated reports (not committed)
 - `strain_binning_analysis.py`, `strain_regression_analysis.py` — Phase A2 strain → slope analyses; the regression module exposes `fit_ols` for reuse.
 - `rules.py` — single source of truth for `thomas_rules()`; imported by dexcom_fetch + rules_model. Priority: hypo (-1/-2) overrides; otherwise slope tier (sh_slope vs flat=0.3, mid=0.7, hi=1.2 -> +1/+2/+3 up, -1/-2 down); if slope unavailable falls back to fasting tier (10.0/12.0/14.0). Activity (s1>=12 -> -2u) and new pen (-1u) stack. Clamp [15, 29].
 - `dexcom_loader.py` — shared Clarity CSV loader; returns `(glucose_list, basal_list, bolus_by_date)`. Also exposes `load_bolus_events()` (Clarity only) and `load_bolus_combined()` (Clarity pre-cutover + Glooko post-cutover). Warns at load time if any rows fail to parse.
-- `novopen_loader.py` — Glooko export loader; `load_glooko_bolus()` returns sorted `[(datetime, units), ...]` of NovoPen 6 injections with Glooko's Prime Detection rule applied (<=2u within 6 min of a following event = prime, dropped).
+- `novopen_loader.py` — Glooko export loader; `load_glooko_bolus()` returns sorted `[(datetime, units), ...]` of NovoPen 6 injections. Delegates Prime Detection to `bolus_classification.filter_primes()`.
+- `bolus_classification.py` — Glooko Prime Detection rule (`filter_primes`, `PRIME_MAX_U=2.0`, `PRIME_WINDOW=6 min`). Single source of truth; imported by `novopen_loader`.
+- `whoop_cycles.py` — WHOOP cycle-to-local-date mapping (`cycle_date_for`: end-6h for closed cycles, start for in-progress). Imported by `whoop_loader`.
 - `whoop_loader.py` — shared WHOOP loader; reads `data/whoop_api/*.json` → `{date: {strain, recovery, hrv, rhr, sleep_perf}}`
 - `dose_diary.py` — read/upsert `data/doses.csv` (one row per dose-night)
 - `dexcom_fetch.py` — daily CGM fetch via `pydexcom`; anchors yesterday's dose with **Clarity > diary > prompt** priority; backfills overnight outcome; writes today's suggestion to diary. Refuses to suggest when today's WHOOP strain is unavailable (emits `NEEDS: strain` on stdout per P12 invariant #2). Flags: `--dose N` (anchor override), `--strain N` (override WHOOP cache lookup), `--new-pen` (applies new-pen rule), `--no-hypo` (override CGM-detected hypos as sensor noise).
@@ -44,6 +46,7 @@ output/                   generated reports (not committed)
 ## Tests
 - `tests/test_rules.py` — 38 unittest cases for `thomas_rules` (21 hypo/fasting/activity/pen + 17 slope). Run: `py -X utf8 tests/test_rules.py`
 - `tests/test_night_stats.py` — 24 unittest cases for `night_stats()` + `second_half_trend()` (slope direction/magnitude, degenerate/insufficient inputs, hypo-event counting, hypo-correction boundaries, TIR fields). Run: `py -X utf8 tests/test_night_stats.py`
+- `tests/test_bolus_classification.py` — 8 unittest cases for `filter_primes` (boundaries at `PRIME_MAX_U` and `PRIME_WINDOW`, bidirectional lookahead, empty input). Run: `py -X utf8 tests/test_bolus_classification.py`
 
 ## Data sources (API-driven)
 - **Dexcom**: `pydexcom` Share API for live glucose. Creds at `<project_root>/dexcom_creds.json` (plaintext, gitignored). Returns tz-aware local datetimes; `dexcom_fetch.py` strips tzinfo. **Share API has glucose only — no insulin events.** Clarity CSV exports (manual: clarity.dexcom.com → save to `data/`) are the authoritative source for basal/bolus.

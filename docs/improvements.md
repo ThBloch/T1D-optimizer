@@ -129,12 +129,7 @@ Risks across E5-E9: MFA on Clarity, Dexcom ToS on automated access, UI brittlene
     5. Add unit tests for the metric (all-flat, sawtooth, post-hypo correction, second-half-only-flat).
     6. Log decision + r value + which "best doses" changed in `decisions-log.md`.
 
-- [ ] E11. Code-conventions principle wording polish (post-Phase-9 audit). Multiple open questions on `docs/code-conventions.md`; resolve in one pass.
-  - **P5 "data layer is loader-only" is violated.** `whoop_loader._cycle_date()` applies the end-6h offset (domain logic, not parsing); `novopen_loader.load_glooko_bolus()` applies Glooko's Prime Detection rule (classification). Decision: tighten wording to "loaders may include the minimum domain logic needed to interpret the source's own semantics" OR refactor both into separate modules. Lean: tighten - moving the logic out would create indirection over format-coupled code.
-  - **P7 + P8 read as decision-snapshots, not durable principles.** "Slope is first-class" and "Bolus is required for slope disambiguation" describe today's system. Decision: generalise to (a) "Production-path signals are first-class - stored per-night, exposed by a shared module, consumed by rules; no recomputation in analysis scripts" and (b) "When a signal can be confounded, the disambiguator is required input, not optional"; OR keep the named cases and accept the principle list will grow.
-  - **P9 "test the production rule, not the analysis scripts" is too absolute.** `inferential_predictor.py` shaped the Phase 6 rule via M3 selection; bugs there propagate to production. Decision: reword to "tests where bugs propagate into production decisions" - covers `inferential_predictor.py` and `night_stats.py` while still excluding pure-research scripts.
-  - **P10 "non-trivial changes" is undefined.** Implicit operating rule: "any change that affects suggested doses, adds/removes a feature from a model, or changes an exclusion criterion". Decision: encode that explicitly in P10.
-  - Output: one decisions-log entry per resolved question, then `code-conventions.md` updated in one pass.
+- [x] E11. Code-conventions principle wording polish (post-Phase-9 audit). Resolved 2026-05-29: P5 refactored (`_cycle_date` -> `whoop_cycles.cycle_date_for`; Prime Detection -> `bolus_classification.filter_primes`); P7+P8 hybrid form with listed instances and strict P8; P9 hybrid form with required test files listed; P10 title renamed to "rule and model changes". Two follow-on items added: E19 (bolus integration into thomas_rules per strict P8) and E20 (tests/test_inferential_predictor.py per strict P9). See decisions-log 2026-05-29.
 
 - [x] E12. P12 invariant #2 ("strain MUST inform every suggestion") vs actual code enforcement. Resolved 2026-05-29 via Path A (minimal NEEDS-line enforcement). `dexcom_fetch.py` now emits `NEEDS: strain` and refuses to compute a suggestion when today's WHOOP strain is unavailable; new `--strain N` flag overrides cache lookup. The friendly `/dose` side (parse `NEEDS:`, ask via documented prompt) remains E1b/E1d work. See decisions-log 2026-05-29.
 
@@ -156,6 +151,18 @@ Risks across E5-E9: MFA on Clarity, Dexcom ToS on automated access, UI brittlene
 - [x] E16. Memory vs decisions-log overlap policy. Resolved 2026-05-29: policy codified in `docs/code-conventions.md` under "Knowledge stores: memory and decisions-log". Decisions-log is canonical; memories carry plain-text `Recorded in docs/decisions-log.md YYYY-MM-DD` cross-references when their content corresponds to a decisions-log entry. Applied to the four overlapping memories today. See decisions-log 2026-05-29.
 
 - [x] E17. `night_stats.second_half_trend()` edge-case behaviour + direct tests. Resolved 2026-05-29: `second_half_trend()` now returns `(None, None, sh_n)` when the regression denominator is 0 (previously returned `0.0` silently). New file `tests/test_night_stats.py` adds 24 direct unit cases covering slope direction/magnitude, degenerate inputs, hypo-event counting, hypo-correction boundaries, and TIR fields. See decisions-log 2026-05-29.
+
+- [ ] E19. Bolus disambiguator integration into the production rule (P8 strict follow-on, added 2026-05-29).
+  - `dexcom_fetch.py` does not currently consult bolus events when interpreting `sh_slope`. A falling slope produces "basal too high" reasoning even when a mid-night correction bolus was taken; the rule cannot distinguish the two cases without the disambiguator.
+  - Approach (E12-pattern): pull bolus events in the overnight window via `dexcom_loader.load_bolus_combined()`, pass them to `thomas_rules` (or a wrapper), and either refuse-to-suggest OR flag ambiguity in the reasoning line when `sh_slope < 0` AND bolus events overlap the second half. Decision on refuse-vs-flag deferred to implementation; lean: flag in reasoning (less invasive than E12's strain refusal because the data IS available, just contextually).
+  - Tests: extend `tests/test_rules.py` with cases for bolus-in-window / bolus-out-of-window / no-bolus.
+  - Effort ~2-3 hours.
+
+- [ ] E20. `tests/test_inferential_predictor.py` (P9 strict follow-on, added 2026-05-29).
+  - `scripts/inferential_predictor.py` shaped the Phase 6 slope rule via M3 selection (decisions-log 2026-05-29). Per P9 it is a required test file but does not exist yet.
+  - Coverage targets: nested-model F-test logic (`fit_ols`-based comparison + `beta_dose` significance gate), signal-ranking output (direct + partial + inferential Spearman, convergence tiering), inferred-optimal-dose computation per night for the selected M-spec.
+  - Approach: synthetic nights with hand-computable expected M-spec selection (e.g. linear data favouring M1; interaction-driven data favouring M3); ranking output for known signal combinations.
+  - Effort ~half day.
 
 - [ ] E18. WAKE_HOUR 7 -> 06:20 (R22 from the 2026-05-28 audit, the last un-shipped redesign item).
   - `scripts/night_stats.py:14` currently sets `WAKE_HOUR = 7`. Thomas's weekday alarm is 06:20; both the slope rule's overnight window and the fasting fallback end at the `WAKE_HOUR` boundary, so moving to 06:20 shifts both signals and can move suggestions.

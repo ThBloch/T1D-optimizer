@@ -1,24 +1,23 @@
 """Glooko export loader for NovoPen 6 bolus events.
 
-Reads `data/glooko/Insulin data/insulin_data_1.csv` and applies Glooko's
-documented Prime Detection rule:
+Reads `data/glooko/Insulin data/insulin_data_1.csv` and applies
+Glooko's documented Prime Detection rule via
+`scripts/bolus_classification.filter_primes`.
 
-    An event is a PRIME iff (amount <= PRIME_MAX_U) AND (another insulin
-    event follows within PRIME_WINDOW). Otherwise it is a real INJECTION.
+Only events from the smart pen are kept; Dexcom-source rows
+(Thomas's manual basal entries) are skipped - basal lives in
+Clarity.
 
-Only events from the smart pen are kept; Dexcom-source rows (Thomas's
-manual basal entries) are skipped - basal lives in Clarity.
-
-Constants reflect Glooko's published rule (May 2026): >=2u within 6 min
-of a following event = prime.
+I/O + parsing only (P5). Classification logic lives in
+`bolus_classification`; this module just calls into it.
 """
 import csv
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
-GLOOKO_DIR   = Path(__file__).resolve().parent.parent / 'data' / 'glooko'
-PRIME_MAX_U  = 2.0
-PRIME_WINDOW = timedelta(minutes=6)
+from bolus_classification import filter_primes
+
+GLOOKO_DIR = Path(__file__).resolve().parent.parent / 'data' / 'glooko'
 
 
 def _is_pen_source(serial):
@@ -57,29 +56,7 @@ def load_glooko_bolus():
         events.append((dt, units))
 
     events.sort(key=lambda e: e[0])
-
-    bolus = []
-    for i, (dt, u) in enumerate(events):
-        if u <= PRIME_MAX_U:
-            # Look both directions: same-timestamp ordering is arbitrary in the
-            # CSV, so a small event may appear after its paired injection. Any
-            # other pen event within +/-PRIME_WINDOW counts as a neighbor.
-            is_prime = False
-            for j in range(i - 1, -1, -1):
-                if dt - events[j][0] > PRIME_WINDOW:
-                    break
-                is_prime = True
-                break
-            if not is_prime:
-                for j in range(i + 1, len(events)):
-                    if events[j][0] - dt > PRIME_WINDOW:
-                        break
-                    is_prime = True
-                    break
-            if is_prime:
-                continue
-        bolus.append((dt, u))
-    return bolus
+    return filter_primes(events)
 
 
 if __name__ == '__main__':

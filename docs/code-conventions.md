@@ -53,8 +53,15 @@ belong outside the rule layer.
 ## P5. Data layer is loader-only
 
 `dexcom_loader.py`, `novopen_loader.py`, `whoop_loader.py`, and
-`dose_diary.py` only do I/O and parsing. They do not compute outcomes
-or apply rules. Per-night statistics belong in `night_stats.py`, not in
+`dose_diary.py` do I/O and parsing only. Domain logic (cycle-to-date
+conversion, event classification) lives in dedicated modules:
+
+- `scripts/whoop_cycles.py` (`cycle_date_for(cycle)`)
+- `scripts/bolus_classification.py` (`filter_primes(events)`)
+
+Loaders may delegate to these helpers but do not implement that logic
+themselves. They do not compute project outcomes or apply Thomas's
+dosing rules. Per-night statistics belong in `night_stats.py`, not in
 loaders.
 
 ## P6. Drop dead weight
@@ -64,29 +71,50 @@ loader. If they are later needed, they are added back at that moment.
 Same for derived features: when a decisions-log entry retires a signal,
 the computation is removed from active scripts.
 
-## P7. Slope is a first-class signal
+## P7. Production-path signals are first-class
 
-`sh_slope` is stored per night in the dose diary, exposed by
-`night_stats.second_half_trend()`, and consumed by `thomas_rules()`. It
-is not recomputed inside individual analysis scripts.
+Each signal that ships into `thomas_rules()` (or its tests) is:
 
-## P8. Bolus is a required input for slope disambiguation
+- stored per-night in the dose diary,
+- exposed by a shared module (not recomputed in analysis scripts),
+- consumed by `rules.py` directly.
+
+Current production signals: `sh_slope`, `s1` (strain), fasting
+glucose, `hypo_events`.
+
+## P8. Confoundable signals require their disambiguator
+
+When the interpretation of a signal depends on another signal being
+present, the disambiguator is a required input, not optional.
+
+Current cases:
+
+- `sh_slope` <- bolus (falling slope can be "basal too high" OR
+  "late correction bolus"; bolus events disambiguate).
 
 Bolus is not a model feature for predicting TIR (decisions-log
-2026-04-15) but IS required to interpret the slope signal: a falling
-slope can be "basal too high" or "I corrected mid-night". Both
-streams - Clarity manual G7 bolus, Glooko NovoPen 6 bolus - flow
-through `dexcom_loader.load_bolus_combined()`.
+2026-04-15) but IS required for slope interpretation. Both streams -
+Clarity manual G7 bolus, Glooko NovoPen 6 bolus - flow through
+`dexcom_loader.load_bolus_combined()`. Code-level enforcement of this
+invariant in the production path is tracked at `improvements.md`
+E19.
 
-## P9. Test the production rule, not the analysis scripts
+## P9. Test the modules whose bugs propagate into production decisions
 
-`tests/test_rules.py` is the gate (38 cases). New rule branches land
-with tests in the same file. Backtest / analysis scripts produce
-reports; they do not block releases. `night_stats.py` is production-
-path code; if it grows non-trivial logic beyond pure pass-through
-stats, it earns its own test file.
+Required test files (gate releases):
 
-## P10. Decisions-log gates non-trivial changes
+- `tests/test_rules.py` - `thomas_rules` pure function, all branches.
+- `tests/test_night_stats.py` - overnight stats + slope computation.
+- `tests/test_inferential_predictor.py` - model-selection F-tests
+  and signal ranking (since M3 selection shapes the rule). Not yet
+  written; tracked at `improvements.md` E20.
+
+Opt-in (no required coverage; tests welcome when they help):
+`basal_analysis.py`, `predictor_test.py`, `ml_model.py`,
+`bolus_noise_test.py`, `strain_binning_analysis.py`,
+`strain_regression_analysis.py`.
+
+## P10. Decisions-log gates rule and model changes
 
 Any change to a `rules.py` threshold, an exclusion criterion, a
 model-feature set, or an outcome metric requires a decisions-log

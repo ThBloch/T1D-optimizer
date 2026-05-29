@@ -215,3 +215,21 @@ New test file `tests/test_night_stats.py` adds 24 direct unit cases:
 Test count totals: `test_rules.py` 38/38 + `test_night_stats.py` 24/24 = 62 green.
 
 **Why:** `scripts/night_stats.py` was the most heavily-consumed production-path module without direct tests (consumed by `dexcom_fetch.py`, `rules_model.py`, `basal_analysis.py`, `inferential_predictor.py`, `dose_diary.py` backfill block, `bolus_noise_test.py`, both strain analysis scripts). A bug in any of its fields would surface only as a misclassified night somewhere downstream. Direct tests close that gap. The degenerate-slope fix is small but matches the honesty principle E12 just enforced for strain: refuse rather than silently no-op.
+
+## 2026-05-29 — code-conventions P5-P10 polish + P5 refactor (E11)
+**Status:** accepted
+**Decision:** Four sub-decisions resolved on the principle wording in `docs/code-conventions.md`:
+
+- **P5 (option b refactor; principle body extended).** Two in-loader domain-logic blocks moved out so P5 stays as-stated. (a) `_parse_offset`, `_parse_iso`, and `_cycle_date` migrated from `whoop_loader.py` to new `scripts/whoop_cycles.py`; loader imports `cycle_date_for`. (b) Glooko Prime Detection rule (`PRIME_MAX_U`, `PRIME_WINDOW`, bidirectional lookahead) migrated from `novopen_loader.py` to new `scripts/bolus_classification.py`; loader imports `filter_primes`. P5 body extended to list the dedicated modules (matching the P7+P8 hybrid form).
+
+- **P7 + P8 (option c hybrid + strict P8).** Both principles rewritten with generalised header + listed current instances. P7: "Production-path signals are first-class — stored per-night, exposed by a shared module, consumed by `rules.py` directly. Current production signals: sh_slope, s1, fasting, hypo_events." P8: "Confoundable signals require their disambiguator. Current cases: sh_slope <- bolus." Strict P8 creates a new invariant-vs-code mismatch on bolus (parallel to E12's strain fix), tracked as new backlog item `E19`.
+
+- **P9 (option d hybrid + strict on inferential_predictor).** P9 reworded with required-test-files list: `test_rules.py`, `test_night_stats.py`, `test_inferential_predictor.py` (the last not yet written). Opt-in test list explicitly names the research scripts that are exempt. Strict reading creates new backlog item `E20` for the missing test file (~half-day effort).
+
+- **P10 (option c title rename).** Title changes from "Decisions-log gates non-trivial changes" to "Decisions-log gates rule and model changes." Body unchanged. The four triggers in the body (rules.py thresholds, exclusion criteria, model-feature sets, outcome metrics) all fit the new title cleanly; "non-trivial" was vague.
+
+Refactor verification: `novopen_loader.py` `__main__` block produces byte-identical output to pre-refactor snapshot (342 injections, 2026-03 96/497u, 2026-04 131/704u, 2026-05 115/626u). `whoop_loader.load_whoop()` returns same dict size (364 dates). New `tests/test_bolus_classification.py` adds 8 cases (boundaries at `PRIME_MAX_U` and `PRIME_WINDOW`, bidirectional lookahead, empty input).
+
+Test totals: `test_rules.py` 38 + `test_night_stats.py` 24 + `test_bolus_classification.py` 8 = 70 green.
+
+**Why:** Without the wording polish, code-conventions had two structural mismatches (P5 violated; P9 empirically wrong after E17 landed) and two soft principles (P7+P8 as decision-snapshots; P10's vague title). The refactor under P5 keeps the principle crisp at the cost of two small new modules - the alternative ("tighten the wording") would have hedged P5 in a way future loader authors could lean on. P7+P8 in hybrid form (generalised principle + listed instances) gives both durability and grepability, matching the same style now also adopted for P5 and P9. Strict P8 and P9 readings intentionally surface follow-on work (E19, E20) rather than absorbing them into E11 - they are real code work, not wording fixes. Total session-internal time on E11: ~1 hour sparring + ~30 min implementation.

@@ -1,26 +1,15 @@
-"""WHOOP data loader — reads from data/whoop_api/*.json (built by whoop_api_fetch.py)."""
+"""WHOOP data loader — reads from data/whoop_api/*.json (built by whoop_api_fetch.py).
+
+I/O + parsing only. The cycle-to-local-date mapping lives in
+`scripts/whoop_cycles.py` (P5).
+"""
 import json
-from datetime import datetime, timedelta
 from pathlib import Path
+
+from whoop_cycles import cycle_date_for
 
 API_DIR = Path(__file__).resolve().parent.parent / 'data' / 'whoop_api'
 
-def _parse_offset(s):
-    if s == 'Z':
-        return timedelta(0)
-    sign = 1 if s[0] == '+' else -1
-    h, m = s[1:].split(':')
-    return timedelta(hours=sign * int(h), minutes=sign * int(m))
-
-def _parse_iso(s):
-    return datetime.fromisoformat(s.replace('Z', '+00:00'))
-
-def _cycle_date(cycle):
-    """Local date the cycle represents — matches old CSV logic (end-6h, or start if in-progress)."""
-    offset = _parse_offset(cycle['timezone_offset'])
-    if cycle.get('end'):
-        return ((_parse_iso(cycle['end']) + offset) - timedelta(hours=6)).date()
-    return (_parse_iso(cycle['start']) + offset).date()
 
 def load_whoop():
     """Return {date: {'date', 'strain', 'recovery', 'hrv', 'rhr', 'sleep_perf'}}."""
@@ -37,7 +26,7 @@ def load_whoop():
         strain = score.get('strain')
         if strain is None:
             continue
-        d = _cycle_date(c)
+        d = cycle_date_for(c)
         r_score = (rec_by_cycle.get(c['id']) or {}).get('score') or {}
         s_score = (slp_by_cycle.get(c['id']) or {}).get('score') or {}
         out[d] = {
