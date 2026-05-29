@@ -112,5 +112,7 @@ def second_half_trend(readings):
     my = sum(ys) / sh_n
     num = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
     den = sum((x - mx) ** 2 for x in xs)
-    slope = num / den if den > 0 else 0.0
+    if den == 0:
+        return None, None, sh_n
+    slope = num / den
     return slope, ys[-1] - ys[0], sh_n

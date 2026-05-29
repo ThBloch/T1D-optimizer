@@ -201,3 +201,17 @@ When they disagree, the **decisions-log wins**. Memory is updated to match; the 
 This policy is codified in `docs/code-conventions.md` under "Knowledge stores: memory and decisions-log". Applied to the four overlapping memory files today: `feedback_night_quality_slope`, `feedback_rule_parameter_ownership`, `feedback_strain_yesterday_invalid`, `project_glooko_prime_detection`. The latter previously gestured at a decisions-log entry via a broken wiki-link (`[[decisions-log-glooko-prime-rule]]`); replaced with the plain-text reference.
 
 **Why:** Without a policy, future sessions could update memory independently of decisions-log, producing silently divergent guidance that a future Claude has no protocol for resolving. Memory drift is the more likely direction because memory edits are session-local and not surfaced in `git status`. The cross-reference makes the link traceable both ways: a memory's authority can be checked, and a decisions-log entry's behavioural implication can be located.
+
+## 2026-05-29 — night_stats degenerate-slope refuses + direct tests (E17)
+**Status:** accepted
+**Decision:** `night_stats.second_half_trend()` now returns `(None, None, sh_n)` when the regression denominator is 0 (mathematically: all timestamps in the second half are equal). Previously it returned `slope = 0.0` in that case, which flowed into `thomas_rules()` and triggered the slope-tier "flat band -> no adjustment" branch. The new contract matches the existing insufficient-readings branch (`sh_n < SH_MIN_READINGS`): both signal "no measurable slope" and let the fasting fallback in `rules.py` take over.
+
+Production impact is essentially zero - Dexcom emits at 5-minute intervals, so distinct timestamps are the norm and the degenerate path was never exercised in real data. The change is honesty: refuse to claim "flat" when we have no signal at all.
+
+New test file `tests/test_night_stats.py` adds 24 direct unit cases:
+- `second_half_trend()`: empty input, insufficient second half, rising/falling/flat slopes with hand-computable magnitudes, degenerate identical-timestamps, narrow-window per-hour scaling, first-half-does-not-affect-slope.
+- `night_stats()`: empty input, below `min_readings`, normal field math, hypo-event counting (zero / single dip / two separate / sustained one-episode / boundary at HYPO_THR=4.0), hypo-correction (trigger / boundary-not-trigger at HYPO_CORRECTION_THR=10.0 / no-hypo-no-trigger), `hyper_adj` zero-when-correction / equals-hyper_pct-otherwise, TIR target range, TIR clinical range, constants-imported sanity check.
+
+Test count totals: `test_rules.py` 38/38 + `test_night_stats.py` 24/24 = 62 green.
+
+**Why:** `scripts/night_stats.py` was the most heavily-consumed production-path module without direct tests (consumed by `dexcom_fetch.py`, `rules_model.py`, `basal_analysis.py`, `inferential_predictor.py`, `dose_diary.py` backfill block, `bolus_noise_test.py`, both strain analysis scripts). A bug in any of its fields would surface only as a misclassified night somewhere downstream. Direct tests close that gap. The degenerate-slope fix is small but matches the honesty principle E12 just enforced for strain: refuse rather than silently no-op.

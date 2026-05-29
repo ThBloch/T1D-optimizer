@@ -43,6 +43,7 @@ output/                   generated reports (not committed)
 
 ## Tests
 - `tests/test_rules.py` — 38 unittest cases for `thomas_rules` (21 hypo/fasting/activity/pen + 17 slope). Run: `py -X utf8 tests/test_rules.py`
+- `tests/test_night_stats.py` — 24 unittest cases for `night_stats()` + `second_half_trend()` (slope direction/magnitude, degenerate/insufficient inputs, hypo-event counting, hypo-correction boundaries, TIR fields). Run: `py -X utf8 tests/test_night_stats.py`
 
 ## Data sources (API-driven)
 - **Dexcom**: `pydexcom` Share API for live glucose. Creds at `<project_root>/dexcom_creds.json` (plaintext, gitignored). Returns tz-aware local datetimes; `dexcom_fetch.py` strips tzinfo. **Share API has glucose only — no insulin events.** Clarity CSV exports (manual: clarity.dexcom.com → save to `data/`) are the authoritative source for basal/bolus.

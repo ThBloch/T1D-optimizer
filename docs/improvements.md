@@ -155,10 +155,7 @@ Risks across E5-E9: MFA on Clarity, Dexcom ToS on automated access, UI brittlene
 
 - [x] E16. Memory vs decisions-log overlap policy. Resolved 2026-05-29: policy codified in `docs/code-conventions.md` under "Knowledge stores: memory and decisions-log". Decisions-log is canonical; memories carry plain-text `Recorded in docs/decisions-log.md YYYY-MM-DD` cross-references when their content corresponds to a decisions-log entry. Applied to the four overlapping memories today. See decisions-log 2026-05-29.
 
-- [ ] E17. `night_stats.second_half_trend()` edge-case behaviour + direct tests.
-  - Current behaviour: returns `(None, None, sh_n)` when `sh_n < SH_MIN_READINGS` (good). Returns `(0.0, ...)` when the regression denominator is 0 (single timestamp or all-equal timestamps) - silent treat-as-flat, which then makes the slope-tier branch in `rules.py` apply a "no adjustment" line.
-  - Decision: tighten to return `None` in degenerate cases so the fasting fallback kicks in instead.
-  - Work: add direct tests for `second_half_trend()` (single timestamp, all-equal timestamps, NaN in input) and for `night_stats()` (currently exercised only indirectly via `test_rules.py`). `night_stats.py` is production-path code per P9-as-reworded (see E11) so it earns its own test file.
+- [x] E17. `night_stats.second_half_trend()` edge-case behaviour + direct tests. Resolved 2026-05-29: `second_half_trend()` now returns `(None, None, sh_n)` when the regression denominator is 0 (previously returned `0.0` silently). New file `tests/test_night_stats.py` adds 24 direct unit cases covering slope direction/magnitude, degenerate inputs, hypo-event counting, hypo-correction boundaries, and TIR fields. See decisions-log 2026-05-29.
 
 - [ ] E18. WAKE_HOUR 7 -> 06:20 (R22 from the 2026-05-28 audit, the last un-shipped redesign item).
   - `scripts/night_stats.py:14` currently sets `WAKE_HOUR = 7`. Thomas's weekday alarm is 06:20; both the slope rule's overnight window and the fasting fallback end at the `WAKE_HOUR` boundary, so moving to 06:20 shifts both signals and can move suggestions.
