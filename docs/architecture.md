@@ -19,10 +19,10 @@ Five invariants. Everything else is implementation detail.
    schedule, never decides on Thomas's behalf.
 
 2. **Strain is non-negotiable.** Every dose suggestion must consider
-   today's WHOOP strain. The current production path will silently skip
-   the activity branch when `s1 is None`; this is a known invariant
-   violation - see `improvements.md` E1b for the remediation plan
-   (`NEEDS:`-line protocol).
+   today's WHOOP strain. `dexcom_fetch.py` emits `NEEDS: strain` on
+   stdout and refuses to compute a suggestion when today's strain is
+   unavailable (decisions-log 2026-05-29). Friendly `/dose` user prompt
+   wiring remains as `improvements.md` E1b/E1d.
 
 3. **Outcome metric is the second-half overnight slope.** Down = dose too
    high; up = too low; flat = correct. TIR and fasting are secondary
@@ -312,12 +312,12 @@ the stop event.
 - **WHOOP in-progress cycle.** The cycle covering "today" is indexed by
   its start date and lacks `score.strain` until the cycle closes (i.e.
   after Thomas's next sleep), so `load_whoop().get(today)` returns
-  `None` at evening dose time. The strain-non-negotiable invariant is
-  therefore not yet enforced in code - `dexcom_fetch.py` falls through
-  to `thomas_rules(s1=None)`, which silently no-ops the activity
-  branch. Remediation tracked at `improvements.md` E1b: emit
-  `NEEDS: strain` on stdout, let `/dose` ask Thomas directly. Live-fetch
-  of the in-progress cycle via `whoop-sdk` is an exploration sub-task.
+  `None` at evening dose time. `dexcom_fetch.py` now refuses to suggest
+  in that state and emits `NEEDS: strain` on stdout; the user re-runs
+  with `--strain N` or waits for the cycle to close. The friendly
+  `/dose` side (parse `NEEDS:`, ask via documented prompt) remains
+  tracked at `improvements.md` E1b/E1d. Live-fetch of the in-progress
+  cycle via `whoop-sdk` is an exploration sub-task.
 
 - **Glooko export is manual.** No public Glooko API exposes NovoPen
   bolus today; weekly browser exports populate `data/glooko/`. Playwright

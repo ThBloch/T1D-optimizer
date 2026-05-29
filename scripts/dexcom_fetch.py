@@ -48,6 +48,7 @@ def fetch_readings(username, password):
 def run():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dose', type=float, default=None)
+    parser.add_argument('--strain', type=float, default=None)
     parser.add_argument('--new-pen', action='store_true')
     parser.add_argument('--no-hypo', action='store_true')
     args = parser.parse_args()
@@ -143,13 +144,24 @@ def run():
             find_row(diary, yesterday)['dose_u'] = yesterday_dose
             dose_source = 'manual'
 
-    try:
-        whoop = load_whoop()
-        today_strain = (whoop.get(today) or {}).get('strain')
-    except FileNotFoundError:
-        today_strain = None
+    if args.strain is not None:
+        today_strain = args.strain
+    else:
+        try:
+            whoop = load_whoop()
+            today_strain = (whoop.get(today) or {}).get('strain')
+        except FileNotFoundError:
+            today_strain = None
+
     if today_strain is None:
-        print(f"\n  Today's WHOOP strain not yet on file (in-progress cycle).")
+        # P12 invariant #2: strain must inform every suggestion. Refuse
+        # rather than silently no-op the activity branch.
+        print()
+        print("NEEDS: strain")
+        print(f"  Today's WHOOP strain not yet on file (in-progress cycle).")
+        print(f"  Re-run with `--strain N` or wait for the cycle to close.")
+        save_diary(diary)
+        return
 
     new_pen = args.new_pen
     no_hypo = args.no_hypo

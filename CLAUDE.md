@@ -7,7 +7,7 @@ Thomas Bloch-Nielsen — T1D diagnosed 2025-04-09.
 cd D:/claude/t1d/scripts
 py -X utf8 basal_analysis.py                          # weekly pattern (research)
 py -X utf8 rules_model.py                             # backtest report (research)
-py -X utf8 dexcom_fetch.py [--new-pen] [--no-hypo]    # production path: live CGM + dose suggestion
+py -X utf8 dexcom_fetch.py [--dose N] [--strain N] [--new-pen] [--no-hypo]    # production path: live CGM + dose suggestion
 py -X utf8 whoop_api_fetch.py [--full]                # refresh WHOOP JSON cache (incremental by default)
 py -X utf8 tests/test_rules.py                        # 38 unittest cases (run from project root)
 ```
@@ -38,7 +38,7 @@ output/                   generated reports (not committed)
 - `novopen_loader.py` — Glooko export loader; `load_glooko_bolus()` returns sorted `[(datetime, units), ...]` of NovoPen 6 injections with Glooko's Prime Detection rule applied (<=2u within 6 min of a following event = prime, dropped).
 - `whoop_loader.py` — shared WHOOP loader; reads `data/whoop_api/*.json` → `{date: {strain, recovery, hrv, rhr, sleep_perf}}`
 - `dose_diary.py` — read/upsert `data/doses.csv` (one row per dose-night)
-- `dexcom_fetch.py` — daily CGM fetch via `pydexcom`; anchors yesterday's dose with **Clarity > diary > prompt** priority; backfills overnight outcome; writes today's suggestion to diary. Flags: `--new-pen` (applies new-pen rule), `--no-hypo` (override CGM-detected hypos as sensor noise).
+- `dexcom_fetch.py` — daily CGM fetch via `pydexcom`; anchors yesterday's dose with **Clarity > diary > prompt** priority; backfills overnight outcome; writes today's suggestion to diary. Refuses to suggest when today's WHOOP strain is unavailable (emits `NEEDS: strain` on stdout per P12 invariant #2). Flags: `--dose N` (anchor override), `--strain N` (override WHOOP cache lookup), `--new-pen` (applies new-pen rule), `--no-hypo` (override CGM-detected hypos as sensor noise).
 - `whoop_api_fetch.py` — incremental WHOOP refresh via `whoop-sdk` (4 endpoints, 7-day overlap cursor, dedup-merge by id/cycle_id, 429 backoff). `--full` forces backfill from 2025-04-09. Typical run ~4s.
 
 ## Tests

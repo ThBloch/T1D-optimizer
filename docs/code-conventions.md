@@ -106,8 +106,11 @@ Five invariants - stated in `architecture.md` "Purpose" section and
 mirrored here. Drift away from any of these is a red flag.
 
 1. Dose decisions are user-initiated. Never scheduled, never pushed.
-2. Strain MUST inform every suggestion. Code-level enforcement tracked
-   at `improvements.md` E1b (`NEEDS:`-line protocol).
+2. Strain MUST inform every suggestion. `dexcom_fetch.py` emits
+   `NEEDS: strain` and refuses to compute a suggestion when today's
+   WHOOP strain is unavailable (decisions-log 2026-05-29). User-side
+   wiring of `/dose` to ask the user via documented prompts is the
+   remaining E1b/E1d work.
 3. Night-quality outcome metric is second-half slope, not endpoint
    fasting.
 4. Bolus history is required for slope disambiguation.

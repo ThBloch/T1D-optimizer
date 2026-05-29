@@ -136,11 +136,7 @@ Risks across E5-E9: MFA on Clarity, Dexcom ToS on automated access, UI brittlene
   - **P10 "non-trivial changes" is undefined.** Implicit operating rule: "any change that affects suggested doses, adds/removes a feature from a model, or changes an exclusion criterion". Decision: encode that explicitly in P10.
   - Output: one decisions-log entry per resolved question, then `code-conventions.md` updated in one pass.
 
-- [ ] E12. P12 invariant #2 ("strain MUST inform every suggestion") vs actual code enforcement.
-  - Stated in `architecture.md` "Purpose" and `code-conventions.md` P12. Code violates it: `dexcom_fetch.py` falls through to `thomas_rules(s1=None)` when WHOOP cache returns None, silently no-opping the activity branch. Architecture.md "Limits" acknowledges the gap; the invariant doesn't.
-  - Decision: (a) ship E1b now so the invariant is real, OR (b) downgrade #2 to "intent (enforcement tracked at E1b)" until E1b lands.
-  - Risk of leaving as-is: anyone reading code-conventions treats #2 as load-bearing and is wrong.
-  - Effort: (a) ~half a day for E1b NEEDS-line protocol; (b) two-line wording edit.
+- [x] E12. P12 invariant #2 ("strain MUST inform every suggestion") vs actual code enforcement. Resolved 2026-05-29 via Path A (minimal NEEDS-line enforcement). `dexcom_fetch.py` now emits `NEEDS: strain` and refuses to compute a suggestion when today's WHOOP strain is unavailable; new `--strain N` flag overrides cache lookup. The friendly `/dose` side (parse `NEEDS:`, ask via documented prompt) remains E1b/E1d work. See decisions-log 2026-05-29.
 
 - [ ] E13. Hookify reality-check - do `decisions-log-reminder` and `run-tests-reminder` actually fire?
   - No evidence either fired during the 9-phase redesign despite repeated `scripts/*.py` edits. Could be classifier blocking, transcript pattern miss, firing-but-invisible, or something else.

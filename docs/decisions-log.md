@@ -171,3 +171,19 @@ Architecture doc rewritten with five invariants in the Purpose section (R18: use
 - `code-conventions.md` "principles emerged from..." sentence updated to point at the archived path.
 - Decisions-log entries referencing the audit doc by its old `docs/` path are immutable and remain as-is (historical context); future references should use the archive path.
 **Why:** The audit was a snapshot with a defined purpose - extract inconsistencies and propose principles. Both are now durably homed (`improvements.md`, `code-conventions.md`, and the 9 phase commits). Keeping the audit in `docs/` would imply ongoing relevance it no longer has. Archiving preserves the historical record (gitignored locally, recoverable via git history at the old path) without it occupying the active doc tree.
+
+## 2026-05-29 — E12 resolved: strain-non-negotiable invariant enforced in code (Path A)
+**Status:** accepted
+**Decision:** `dexcom_fetch.py` now refuses to compute a suggestion when today's WHOOP strain is unavailable. When `args.strain` is not passed and `load_whoop().get(today)` returns no `strain`, the script:
+- emits `NEEDS: strain` on stdout (machine-readable, for future `/dose` parsing),
+- prints a courtesy hint ("Today's WHOOP strain not yet on file (in-progress cycle). Re-run with `--strain N` or wait for the cycle to close."),
+- saves the diary (preserving yesterday's outcome backfill),
+- returns without calling `thomas_rules()`.
+
+New `--strain N` CLI flag mirrors `--dose N`: when present it overrides the cache lookup entirely. P12 invariant #2 ("strain MUST inform every suggestion") is now real in code on the production path.
+
+Scope intentionally minimal (Path A from the E12 spar): no changes to `.claude/commands/dose.md`. Users of `/dose` hit a hard wall on strain-missing days and re-run the script manually with `--strain N`. The friendly `/dose` side - parse `NEEDS:` lines and ask via documented prompt wording - remains tracked at `improvements.md` E1b / E1d.
+
+Doc updates: `CLAUDE.md` Quick Start + dexcom_fetch.py description list the new `--strain N` flag and the refusal behaviour; `code-conventions.md` P12 #2 reworded to reflect the new state; `architecture.md` "Purpose" #2 and "Limits" updated.
+
+**Why:** The invariant was asserted in two prose locations (`architecture.md` Purpose and `code-conventions.md` P12) while the code silently no-opped the activity branch when `s1 is None`. That contradicted the 2026-05-27 "strain non-negotiable" decision and the `feedback-strain-yesterday-invalid` memory. Path A is the smallest code change that makes the invariant true: it accepts a worse `/dose` UX today (raw wall instead of friendly prompt) in exchange for the protocol being honest. The friendly UX layer (E1b/E1d) lands separately when E1d's open prompt-wording questions are resolved. The alternative (Path C - downgrade the invariant wording) was rejected because it walks back a stated load-bearing preference.
