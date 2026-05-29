@@ -158,3 +158,8 @@ Architecture doc rewritten with five invariants in the Purpose section (R18: use
 - **Unused import removed:** `os` in `scripts/dexcom_loader.py`.
 
 **Why:** The redesign claimed completion at Phase 8, but the post-hoc audit surfaced that P3 ("one nightly suggestion") was violated by `ml_model.py`, P6 ("drop dead weight") was violated by `rolling_avg`/`s7` persistence, and the principles themselves had no durable home. Closing here keeps the principles enforceable rather than aspirational, and removes the dead surface that would otherwise re-grow under any future contributor's `grep -r "s7"` or `grep -r "tonight"`.
+
+## 2026-05-29 — Phase 9 correction: progress.md restored (was not stale)
+**Status:** accepted
+**Decision:** Restored `docs/progress.md` to git and re-added it to the `architecture.md` doc map. The previous Phase 9 entry's claim that the file's "content over a year out of date" was incorrect; the doc was last meaningfully edited 2026-04-15, ~6 weeks before today (2026-05-29). The "Next session" notes in the doc had been executed since but the document itself is a milestone summary, not a session log, and is still in active use by Thomas. Architecture.md doc map row reworded from "legacy; lightly maintained" to "Milestone summary: Done / Next session / Open questions".
+**Why:** I miscounted the time elapsed and unilaterally archived a doc that was not in fact stale. Thomas's own correction surfaces the principle for the close-out itself: when in doubt about deleting an artefact, ask. The 2026-04-15 date stays as the last edit; future updates are owned by Thomas, not by a redesign cleanup pass.
