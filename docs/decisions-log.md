@@ -133,3 +133,16 @@ Phase 6 rule design works from the HIGH list. MED signals are watched but not en
 
 Signature: `thomas_rules(yesterday_dose, fasting, hypo_events, s1, new_pen=False, sh_slope=None, slope_flat=0.3, slope_mid=0.7, slope_hi=1.2, ...)`. `sh_slope` defaults to None so existing callers / tests work unchanged; 17 new slope tests added in `tests/test_rules.py` (38/38 total green). `dexcom_fetch.py` and `rules_model.py` pass `sh_slope` (live and per-night respectively).
 **Why:** Slope captures the trajectory the dose produced - a flat second half means the basal held; a rising one means it ran out; a falling one means too much. Endpoint fasting only sees the result, not the path, and is gameable by a late-night correction bolus (Phase 5 confirmed bolus_4h_pre and bolus_during_night are both HIGH-tier slope predictors, supporting the disambiguation framing). Backtest on 340 nights: slope-rule MAE 1.35u (within margin of the prior fasting-rule baseline 1.32u) with 63.8% within +/-1u of actual doses. Mean diff +0.79u (actual > suggested) is consistent with Phase 5's "Thomas systemically under-dosing relative to inferred optimum" finding. Thresholds parameterised so a future R8-style backtest can re-tune without code change.
+
+## 2026-05-29 — Doc-scope policy + architecture.md rewrite (R20 / R16-R18)
+**Status:** accepted
+**Decision:** Adopt an explicit scope split across the project's docs and rewrite `docs/architecture.md` against it. Scope split:
+- `docs/architecture.md` = WHAT the components are and HOW they connect. No values restated from code.
+- `docs/decisions-log.md` = WHY a choice was made. Immutable history.
+- `docs/improvements.md` = backlog (`[ ]` / `[x]` / `[-]`).
+- `docs/session-log.md` = per-session log (changes / decisions / blockers / next).
+- `CLAUDE.md` = quick reference (run commands, paths, conventions).
+- Auto-memory at `~/.claude/projects/D--claude-t1d/memory/` = cross-session patterns.
+
+Architecture doc rewritten with five invariants in the Purpose section (R18: user-initiated only; strain non-negotiable; second-half slope is the outcome; bolus required for slope disambiguation; production path named). Data-flow tables for sources + signal flow added (R17). All threshold values point at `scripts/rules.py:7-19` and `scripts/night_stats.py:13-25`; the doc itself contains zero numeric restates of code constants (R16). Verified via grep: `\b(10\.0|12\.0|14\.0|15|29|0\.3|0\.7|1\.2|4\.0|5\.0|8\.0|0\.5)\b` returns no hits in `docs/architecture.md`.
+**Why:** Pre-rewrite, the architecture doc duplicated thresholds and code paths, drifted from current behavior (matching model framed as primary; slope rule not mentioned), and overlapped scope with `improvements.md` and the session-log. Single-source-of-truth in code prevents drift; one place per kind of question prevents readers from triangulating across three files. R20 makes that policy explicit so future contributions stay aligned without re-deriving the rule each time.
