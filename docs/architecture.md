@@ -56,7 +56,6 @@ discipline; do not duplicate across files.
 | `docs/improvements.md` | Backlog of open work. Status `[ ]` / `[x]` / `[-]`. |
 | `docs/session-log.md` | Per-session log of changes, decisions, blockers, next steps |
 | `docs/progress.md` | Milestone summary: Done / Next session / Open questions |
-| `docs/t1d-redesign.md` | 2026-05-28 audit (snapshot). P1-P12 superseded by `code-conventions.md`. |
 | `CLAUDE.md` | Quick reference for running the scripts; project conventions |
 | Memory at `~/.claude/projects/D--claude-t1d/memory/` | Cross-session patterns (user, feedback, project, reference) |
 

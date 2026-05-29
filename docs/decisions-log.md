@@ -163,3 +163,11 @@ Architecture doc rewritten with five invariants in the Purpose section (R18: use
 **Status:** accepted
 **Decision:** Restored `docs/progress.md` to git and re-added it to the `architecture.md` doc map. The previous Phase 9 entry's claim that the file's "content over a year out of date" was incorrect; the doc was last meaningfully edited 2026-04-15, ~6 weeks before today (2026-05-29). The "Next session" notes in the doc had been executed since but the document itself is a milestone summary, not a session log, and is still in active use by Thomas. Architecture.md doc map row reworded from "legacy; lightly maintained" to "Milestone summary: Done / Next session / Open questions".
 **Why:** I miscounted the time elapsed and unilaterally archived a doc that was not in fact stale. Thomas's own correction surfaces the principle for the close-out itself: when in doubt about deleting an artefact, ask. The 2026-04-15 date stays as the last edit; future updates are owned by Thomas, not by a redesign cleanup pass.
+
+## 2026-05-29 — Redesign audit doc archived (R-series + P-series fully migrated)
+**Status:** accepted
+**Decision:** `docs/t1d-redesign.md` moved to `archive/docs_pre_redesign/`. The audit's actionable content is now fully migrated: R1-R21 done across Phases 1-9; R22 broken out as `improvements.md` E18 (last un-shipped item, gated on E10's fixed-vs-relative wake-anchor decision); P1-P12 lifted to `docs/code-conventions.md` (Phase 9). Sections 1-6 of the audit (component map, data sources, rules, inconsistencies, modularity assessment) were informational and fed the R-series.
+- `architecture.md` doc map row removed.
+- `code-conventions.md` "principles emerged from..." sentence updated to point at the archived path.
+- Decisions-log entries referencing the audit doc by its old `docs/` path are immutable and remain as-is (historical context); future references should use the archive path.
+**Why:** The audit was a snapshot with a defined purpose - extract inconsistencies and propose principles. Both are now durably homed (`improvements.md`, `code-conventions.md`, and the 9 phase commits). Keeping the audit in `docs/` would imply ongoing relevance it no longer has. Archiving preserves the historical record (gitignored locally, recoverable via git history at the old path) without it occupying the active doc tree.

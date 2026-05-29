@@ -129,6 +129,48 @@ Risks across E5-E9: MFA on Clarity, Dexcom ToS on automated access, UI brittlene
     5. Add unit tests for the metric (all-flat, sawtooth, post-hypo correction, second-half-only-flat).
     6. Log decision + r value + which "best doses" changed in `decisions-log.md`.
 
+- [ ] E11. Code-conventions principle wording polish (post-Phase-9 audit). Multiple open questions on `docs/code-conventions.md`; resolve in one pass.
+  - **P5 "data layer is loader-only" is violated.** `whoop_loader._cycle_date()` applies the end-6h offset (domain logic, not parsing); `novopen_loader.load_glooko_bolus()` applies Glooko's Prime Detection rule (classification). Decision: tighten wording to "loaders may include the minimum domain logic needed to interpret the source's own semantics" OR refactor both into separate modules. Lean: tighten - moving the logic out would create indirection over format-coupled code.
+  - **P7 + P8 read as decision-snapshots, not durable principles.** "Slope is first-class" and "Bolus is required for slope disambiguation" describe today's system. Decision: generalise to (a) "Production-path signals are first-class - stored per-night, exposed by a shared module, consumed by rules; no recomputation in analysis scripts" and (b) "When a signal can be confounded, the disambiguator is required input, not optional"; OR keep the named cases and accept the principle list will grow.
+  - **P9 "test the production rule, not the analysis scripts" is too absolute.** `inferential_predictor.py` shaped the Phase 6 rule via M3 selection; bugs there propagate to production. Decision: reword to "tests where bugs propagate into production decisions" - covers `inferential_predictor.py` and `night_stats.py` while still excluding pure-research scripts.
+  - **P10 "non-trivial changes" is undefined.** Implicit operating rule: "any change that affects suggested doses, adds/removes a feature from a model, or changes an exclusion criterion". Decision: encode that explicitly in P10.
+  - Output: one decisions-log entry per resolved question, then `code-conventions.md` updated in one pass.
+
+- [ ] E12. P12 invariant #2 ("strain MUST inform every suggestion") vs actual code enforcement.
+  - Stated in `architecture.md` "Purpose" and `code-conventions.md` P12. Code violates it: `dexcom_fetch.py` falls through to `thomas_rules(s1=None)` when WHOOP cache returns None, silently no-opping the activity branch. Architecture.md "Limits" acknowledges the gap; the invariant doesn't.
+  - Decision: (a) ship E1b now so the invariant is real, OR (b) downgrade #2 to "intent (enforcement tracked at E1b)" until E1b lands.
+  - Risk of leaving as-is: anyone reading code-conventions treats #2 as load-bearing and is wrong.
+  - Effort: (a) ~half a day for E1b NEEDS-line protocol; (b) two-line wording edit.
+
+- [ ] E13. Hookify reality-check - do `decisions-log-reminder` and `run-tests-reminder` actually fire?
+  - No evidence either fired during the 9-phase redesign despite repeated `scripts/*.py` edits. Could be classifier blocking, transcript pattern miss, firing-but-invisible, or something else.
+  - Approach: end a session with a clear `scripts/*.py` edit and no test run; verify the stop-event reminder lands. If silent, debug. If theatre, the discipline P10 claims to enforce is theatre too.
+  - Effort: minutes if hooks fire; ~hour if they need debugging.
+
+- [ ] E14. Production-path smoke test (integration test for `dexcom_fetch.py` end-to-end).
+  - 38 unit tests cover `thomas_rules` (pure function). Zero integration tests cover the production path: Dexcom fetch -> `night_stats` -> rules -> diary upsert. Regression in any signature or import is undetected until `/dose` is run live.
+  - Approach: fixture-based smoke under `tests/fixtures/` - synthetic CGM + WHOOP + Clarity snapshot (no real medical data) -> assert produced suggestion + diary delta. Stub Dexcom Share API or skip live fetch.
+  - Effort: ~half a day to set up fixtures; ongoing cost low.
+
+- [ ] E15. Bolus stream disjointness sanity check at merge time.
+  - `dexcom_loader.load_bolus_combined()` assumes Clarity Hurtig and Glooko ACS streams are disjoint by construction (verified empirically 2026-05-29: 1 day overlap with non-overlapping times). This is a current-vendor property, not a guarantee - if Glooko ever ingests G7-app entries (Dexcom partnership), silent double-count.
+  - Decision: log-warn on overlap, hard-fail, or skip the duplicate. Lean: log-warn with the overlapping `(date, units, source)` tuples so the next session sees the warning.
+  - Approach: at merge time, count events with same `(minute, units)` across both streams; emit one log line if non-zero.
+
+- [ ] E16. Memory vs decisions-log overlap policy.
+  - `feedback_night_quality_slope`, `feedback_rule_parameter_ownership` cover the same ground as decisions-log entries on those topics. Memory is per-Claude-instance; decisions-log is shared + durable. When they drift, which wins?
+  - Decision: state in `code-conventions.md` (or a new memory-policy section) that decisions-log is canonical and memory is per-instance interpretation. Drift = update memory or write a new decisions-log entry (never both with conflicting content).
+
+- [ ] E17. `night_stats.second_half_trend()` edge-case behaviour + direct tests.
+  - Current behaviour: returns `(None, None, sh_n)` when `sh_n < SH_MIN_READINGS` (good). Returns `(0.0, ...)` when the regression denominator is 0 (single timestamp or all-equal timestamps) - silent treat-as-flat, which then makes the slope-tier branch in `rules.py` apply a "no adjustment" line.
+  - Decision: tighten to return `None` in degenerate cases so the fasting fallback kicks in instead.
+  - Work: add direct tests for `second_half_trend()` (single timestamp, all-equal timestamps, NaN in input) and for `night_stats()` (currently exercised only indirectly via `test_rules.py`). `night_stats.py` is production-path code per P9-as-reworded (see E11) so it earns its own test file.
+
+- [ ] E18. WAKE_HOUR 7 -> 06:20 (R22 from the 2026-05-28 audit, the last un-shipped redesign item).
+  - `scripts/night_stats.py:14` currently sets `WAKE_HOUR = 7`. Thomas's weekday alarm is 06:20; both the slope rule's overnight window and the fasting fallback end at the `WAKE_HOUR` boundary, so moving to 06:20 shifts both signals and can move suggestions.
+  - Open design question (parked at E10): fixed 06:20 daily, or wake-time-relative (variable by day for weekends / sick days / sleep-ins)? Fixed 06:20 is one line in `night_stats.py`. Wake-time-relative needs a sleep-end signal (likely WHOOP cycle end) plus a per-night lookup, and changes the function signature for `overnight_window()`.
+  - Pending E10's broader design discussion; whichever option ships needs a decisions-log entry first (rule-affecting change per P10).
+
 ---
 
 ## Background

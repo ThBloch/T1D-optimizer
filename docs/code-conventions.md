@@ -5,10 +5,10 @@ in this project. For doc-scope policy (where each kind of *document*
 lives), see `architecture.md` "Doc map" or the decisions-log entry
 2026-05-29 "Doc-scope policy + architecture.md rewrite".
 
-These principles emerged from the 2026-05-28 audit
-(`t1d-redesign.md` §7). They are durable; this file supersedes the
-audit's P1-P12 list as the canonical home. Update by appending a
-decisions-log entry, then editing here.
+These principles emerged from the 2026-05-28 audit (archived at
+`archive/docs_pre_redesign/t1d-redesign.md` §7). They are durable; this
+file supersedes the audit's P1-P12 list as the canonical home. Update
+by appending a decisions-log entry, then editing here.
 
 ---
 
