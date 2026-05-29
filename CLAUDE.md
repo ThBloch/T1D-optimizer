@@ -5,11 +5,11 @@ Thomas Bloch-Nielsen — T1D diagnosed 2025-04-09.
 ## Quick start
 ```
 cd D:/claude/t1d/scripts
-py -X utf8 basal_analysis.py                          # main analysis + tonight's suggestion
-py -X utf8 rules_model.py                             # rules backtest + tonight's rule-based suggestion
-py -X utf8 dexcom_fetch.py [--new-pen] [--no-hypo]    # live CGM + diary-anchored suggestion
+py -X utf8 basal_analysis.py                          # weekly pattern (research)
+py -X utf8 rules_model.py                             # backtest report (research)
+py -X utf8 dexcom_fetch.py [--new-pen] [--no-hypo]    # production path: live CGM + dose suggestion
 py -X utf8 whoop_api_fetch.py [--full]                # refresh WHOOP JSON cache (incremental by default)
-py -X utf8 tests/test_rules.py                        # 21 unit tests for thomas_rules (run from project root)
+py -X utf8 tests/test_rules.py                        # 38 unittest cases (run from project root)
 ```
 ```
 /t1d-status                                           # 4-line snapshot: fetch age, clarity date, backlog count, last dose

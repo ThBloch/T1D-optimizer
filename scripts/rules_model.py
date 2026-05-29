@@ -8,7 +8,6 @@ Thomas's Rules — backtest + ML optimization
 5. Compare: user rules vs ML-optimized rules vs actual decisions
 """
 
-from datetime import timedelta
 import numpy as np
 from sklearn.tree import DecisionTreeRegressor, export_text
 from sklearn.metrics import mean_absolute_error
@@ -46,7 +45,7 @@ def main():
         if i == 0: continue
         prev = nights[i-1]
 
-        suggested, reasoning = thomas_rules(
+        suggested, _ = thomas_rules(
             yesterday_dose = prev['dose'],
             fasting        = prev['fasting'],
             hypo_events    = prev['hypo_events'],
@@ -206,39 +205,6 @@ def main():
     for fname, imp in zip(['prev_fasting','prev_hypo','s1','prev_dose'], dt.feature_importances_):
         bar = '#' * int(imp * 40)
         print(f'    {fname:<15} {imp:.3f}  {bar}')
-
-    # ── TONIGHT'S SUGGESTION FROM RULES ───────────────────────────────────────────
-    print(f'\n{"="*70}')
-    print('TONIGHT\'S SUGGESTION — THOMAS\'S RULES')
-    print('='*70)
-
-    today = max(dt.date() for dt,_ in glucose_list)
-    yesterday = today - timedelta(days=1)
-
-    last_night = next((n for n in reversed(nights) if n['date'] == yesterday), None)
-    today_s1   = strain_idx.get(today, {}).get('strain')
-
-    if last_night:
-        suggested, reasoning = thomas_rules(
-            yesterday_dose = last_night['dose'],
-            fasting        = last_night['fasting'],
-            hypo_events    = last_night['hypo_events'],
-            s1             = today_s1,
-            sh_slope       = last_night['sh_slope'],
-        )
-        print(f'\n  Last night ({yesterday}):')
-        print(f'    Dose injected : {last_night["dose"]:.0f}u')
-        print(f'    Fasting (wake): {last_night["fasting"]} mmol/L')
-        print(f'    Hypo events   : {last_night["hypo_events"]}')
-        print(f'    2nd-half slope: {last_night["sh_slope"]:+.2f} mmol/L/h' if last_night.get('sh_slope') is not None else '    2nd-half slope: n/a')
-        print(f'    TIR (4-10)    : {last_night["tir_full"]}%')
-        print(f'\n  Today s1 (strain): {today_s1 if today_s1 else "not yet available"}')
-        print(f'\n  Rule-based suggestion: {suggested}u')
-        print(f'  Reasoning:')
-        for r in reasoning:
-            print(f'    * {r}')
-    else:
-        print('  No data for yesterday — cannot produce suggestion.')
 
 
 if __name__ == '__main__':

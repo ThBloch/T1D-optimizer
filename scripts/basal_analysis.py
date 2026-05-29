@@ -118,21 +118,21 @@ def run():
     print(f"  Hypo-correction nights excl: {len(hypo_corr_dates)}  (dose-too-high signal, not used in matching)")
     print(f"  Clean nights for modeling  : {len(clean)}")
 
-    # ── STEP 4: Tonight's profile ─────────────────────────────────────────
+    # ── STEP 4: Current profile ───────────────────────────────────────────
     today = g_end
     today_s1  = strain_by_date.get(today, {}).get('strain')
     today_hrv = strain_by_date.get(today, {}).get('hrv')
     today_rec = strain_by_date.get(today, {}).get('recovery')
 
-    # Find yesterday's dose and tonight's injection-time glucose (latest CGM reading)
+    # Find yesterday's dose and current injection-time glucose (latest CGM reading)
     yesterday = today - timedelta(days=1)
     yesterday_dose = next((n['dose'] for n in reversed(nights) if n['date'] == yesterday), None)
 
-    # Best estimate of tonight's injection-time glucose: last CGM reading of the day
-    tonight_inj_g = None
+    # Latest CGM reading used as injection-time glucose proxy
+    current_inj_g = None
     for dt, v in reversed(glucose_list):
         if dt.date() == today:
-            tonight_inj_g = v
+            current_inj_g = v
             break
 
     # ── STEP 5: Match comparable nights ───────────────────────────────────
@@ -146,29 +146,21 @@ def run():
     S1_WINDOW  = 3.0
 
     comparable = []
-    match_criteria = []
 
-    if tonight_inj_g is not None:
-        match_criteria.append(f"inj_g {tonight_inj_g:.1f} ±{INJ_WINDOW}")
+    if current_inj_g is not None:
         for n in clean:
-            if abs(n['inj_g'] - tonight_inj_g) > INJ_WINDOW:
+            if abs(n['inj_g'] - current_inj_g) > INJ_WINDOW:
                 continue
             if today_s1 is not None and n['s1'] is not None:
                 if abs(n['s1'] - today_s1) > S1_WINDOW:
                     continue
             if n['date'] != today:
                 comparable.append(n)
-        if today_s1 is not None:
-            match_criteria.append(f"s1 {today_s1:.1f} ±{S1_WINDOW}")
     elif today_s1 is not None:
-        # fallback: s1 only
-        match_criteria.append(f"s1 {today_s1:.1f} ±{S1_WINDOW}")
         comparable = [n for n in clean
                       if n['s1'] is not None
                       and abs(n['s1'] - today_s1) <= S1_WINDOW
                       and n['date'] != today]
-    else:
-        match_criteria.append('no match variables available')
 
     n_comp = len(comparable)
 
@@ -206,58 +198,6 @@ def run():
             'reg_mean':             linreg(doses, means),
             'reg_tir':              linreg(doses, tirs),
         }
-
-    # Confidence level
-    def confidence(n, stats):
-        if n < 5:
-            return 'INSUFFICIENT'
-        variance_penalty = False
-        if stats:
-            dose_spread = stats['dose_max'] - stats['dose_min']
-            if dose_spread > 8:
-                variance_penalty = True
-        if n >= 10:
-            level = 'HIGH' if not variance_penalty else 'MEDIUM'
-        else:
-            level = 'LOW'
-        return level
-
-    # ── BLOCK 1 ───────────────────────────────────────────────────────────
-    print(f"\n{'='*65}")
-    print(f"  TONIGHT'S BASAL RANGE")
-    print(f"{'='*65}")
-
-    inj_g_str = f"{tonight_inj_g:.1f} mmol/L" if tonight_inj_g else "unknown"
-    print(f"\n  Tonight's injection-time glucose: {inj_g_str}")
-    print(f"  Tonight's s1 (strain): {today_s1 if today_s1 else 'not yet available'}")
-    print(f"  Yesterday dose: {yesterday_dose}u" if yesterday_dose else "  Yesterday dose: unknown")
-
-    if n_comp < 5:
-        print(f"\n  INSUFFICIENT DATA — n={n_comp}")
-        print(f"  Cannot produce a reliable dose range.")
-        print(f"  Match criteria: {' | '.join(match_criteria)}")
-        if tonight_inj_g is None:
-            print(f"  ! Injection-time glucose unknown — check your CGM.")
-    else:
-        stats = outcome_stats(comparable)
-        conf  = confidence(n_comp, stats)
-        print(f"\n  Comparable nights (n={n_comp}) | Match: {' | '.join(match_criteria)}")
-        print(f"  Dose range observed : {stats['dose_min']:.0f}–{stats['dose_max']:.0f}u")
-        print(f"\n  Outcomes in comparable nights:")
-        print(f"    Fasting glucose in target (5–8):   {stats['fasting_in_range_pct']}%")
-        print(f"    Mean overnight in target (5–8):    {stats['mean_in_range_pct']}%")
-        print(f"    Time-in-range overnight (5–8) avg: {stats['tir_mean']}%")
-        print(f"    Hypo nights  (<4.0):               {stats['hypo_nights_pct']}%")
-        print(f"    Hyper nights (>10.0):              {stats['hyper_nights_pct']}%")
-        print(f"  Best performing dose: {stats['best_dose']:.0f}u  (TIR {stats['best_tir']}%)")
-        print(f"  Hypo-correction nights excl: {len(hypo_corr_dates)}")
-        conf_reason = f"n={n_comp}" + (", wide dose spread" if stats['dose_max']-stats['dose_min']>8 else "")
-        print(f"  Confidence: {conf} — {conf_reason}")
-
-        if stats['hypo_nights_pct'] > 10:
-            print(f"  ⚠ Hypo risk: {stats['hypo_nights_pct']}% of comparable nights had nocturnal hypo")
-        elif stats['hyper_nights_pct'] > 40:
-            print(f"  ⚠ Hyper pattern: {stats['hyper_nights_pct']}% of comparable nights above 10 mmol/L")
 
     # ── BLOCK 2 ───────────────────────────────────────────────────────────
     last7 = [n for n in nights if n['date'] >= today - timedelta(days=7)]
@@ -313,6 +253,7 @@ def run():
     print(f"  Hypo-correction nights in window: {sum(1 for n in last7 if n['hypo_correction'])}")
 
     # ── APPENDIX ──────────────────────────────────────────────────────────
+    inj_g_str = f"{current_inj_g:.1f} mmol/L" if current_inj_g else "unknown"
     print(f"\n{'='*65}")
     print(f"  APPENDIX — STATISTICAL DETAIL  (n={n_comp} comparable nights)")
     print(f"{'='*65}")
