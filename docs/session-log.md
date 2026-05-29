@@ -330,3 +330,25 @@ D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sib
 3. Models used this session: Sonnet 4.6 for mechanical phases (1-3, 7); Opus 4.7 for design / cross-cutting work (4-5, 8, 9 close-out audit + spar).
 
 **Commits this session:** `dc942f7` Phase 7 | `102833b` Phase 8 | `cbcf5e0` Phase 9 close-out | `e8e93a8` Phase 9 correction | `e092733` Archive redesign audit + E18.
+
+## 2026-05-29 (continued) post-redesign-backlog-resolution
+**Changed:**
+- **E12 (strain-non-negotiable enforcement).** `scripts/dexcom_fetch.py` refuses to suggest when today's WHOOP strain is unavailable - emits `NEEDS: strain` on stdout, prints a courtesy hint, saves the diary (preserves yesterday's outcome backfill), and returns without calling `thomas_rules()`. New `--strain N` CLI flag overrides cache lookup. `CLAUDE.md`, `architecture.md` Purpose+Limits, `code-conventions.md` P12 invariant #2 all reworded to match the new reality. Path A chosen (minimal: script-side only); `dose.md` unchanged, so `/dose` users hit a raw wall on strain-missing days until E1b/E1d ships. Commit `6020368`.
+- **E16 (memory vs decisions-log policy).** New "Knowledge stores: memory and decisions-log" section in `code-conventions.md`. Decisions-log canonical; memory is recall aid; not duplicates. When they disagree, decisions-log wins; memory updates to match. Cross-reference convention: memories whose content corresponds to a decisions-log entry end with a plain-text `Recorded in docs/decisions-log.md YYYY-MM-DD: <slug>` line (wiki-link syntax `[[name]]` stays reserved for inter-memory links). Pure collab-pattern memories exempt. Applied to the four overlapping memories (`feedback_night_quality_slope`, `feedback_rule_parameter_ownership`, `feedback_strain_yesterday_invalid`, `project_glooko_prime_detection`); the latter previously gestured at a decisions-log entry via a broken `[[decisions-log-glooko-prime-rule]]` wiki-link - replaced with the plain-text reference. Memory files live outside the git repo, so the cross-reference edits don't show up in `git status`. Commit `d3fa9a4`.
+- **E17 (night_stats edge cases + direct tests).** `scripts/night_stats.py:115` `den == 0` case now returns `(None, None, sh_n)` instead of silently defaulting `slope = 0.0`. Matches the existing insufficient-readings contract; downstream `thomas_rules()` falls back to fasting tier. New file `tests/test_night_stats.py` with 24 unittest cases covering `second_half_trend()` (slope direction/magnitude, degenerate, narrow window, first-half independence) and `night_stats()` (field math, hypo-event counting incl. boundary, hypo-correction trigger/boundary/no-hypo, hyper_adj behaviour, TIR fields, constants sanity). Test totals: `test_rules.py` 38 + `test_night_stats.py` 24 = 62 green. Commit `880085d`.
+
+**Decided:**
+- E12 Path A: minimal NEEDS-line enforcement script-side; friendly `/dose` prompting deferred to E1b/E1d. The strain invariant is now real in code, even if the UX wall is raw.
+- E16 cross-references use plain-text format, not wiki-link syntax. Pure collaboration-pattern memories exempt from the convention.
+- E17 night_stats degenerate slope: refuse (return `None`), not silently treat as flat. Matches the E12 honesty principle.
+
+**Blocked:**
+- **E13** (hookify reality-check): Thomas pointed out hooks are centrally handled, asked for diagnosis only. Verified the rules + plugin code work in isolation when invoked via `py` (synthetic stdin produced the expected `systemMessage` output). What I cannot verify from inside this session: whether Claude Code's hook executor uses the same shell-level `python3` resolution that fails for me (`where python3` resolves to the Microsoft Store stub on this machine, exit 49). Awaiting Thomas's observation of whether the hookify nudges have ever actually appeared in past sessions.
+- **E18** (WAKE_HOUR 7 -> 06:20): still gated on E10's fixed-vs-relative wake-anchor decision.
+
+**Next (when Thomas resumes):**
+1. Pick from the remaining E-series. Recommended cheapest-first: E15 (bolus disjointness sanity check, ~30 min) -> E11 (principle wording, 4 sub-decisions in one pass) -> E14 (production-path smoke test, ~half day) -> E1b + E1d (friendly `/dose` strain prompting; gated on E1d's open questions).
+2. E10 (nighttime objective spec) is the gate for E18; resolving E10's design questions unblocks the WAKE_HOUR shift.
+3. E13 remains blocked on Thomas's observation, not on additional Claude-side work.
+
+**Commits this entry:** `6020368` E12 | `d3fa9a4` E16 | `880085d` E17.
