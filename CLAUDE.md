@@ -51,7 +51,7 @@ output/                   generated reports (not committed)
 - Paths derive from `__file__` — repo can move directories without code changes
 - Dexcom CSV: semicolon-delimited, Danish locale, mmol/L, comma decimals
 - Target: fasting 5–8 mmol/L | hypo <4.0 | hyper >10.0
-- Bolus sources: Clarity CSV (manual G7-app entries) up to 2026-01-30; Glooko CSV export of NovoPen 6 from 2026-01-31 onwards. Combined via `dexcom_loader.load_bolus_combined()` (cutover constant `NOVOPEN_CUTOVER`). Glooko export currently manual; automation pending.
+- Bolus sources merged across all dates: Clarity Hurtig rows = manual G7-app entries (regular-pen days); Glooko ACS* rows = NovoPen NFC syncs (smart-pen days). Streams are disjoint by construction (manual G7 never reaches Glooko's pen-source rows; smart-pen events never reach Clarity's raw CSV). Combined via `dexcom_loader.load_bolus_combined()`. Glooko export currently manual; automation pending.
 - WHOOP in-progress cycle dating: indexed under start date, so `today_s1` lookup often returns None at dose time — fetch live via API when needed
 - WHOOP strain freshness: `score.strain` only updates on WHOOP app sync — check `updated_at`
 - Dose diary `data/doses.csv` is gitignored (under `data/`); Clarity-derived dose backfills it automatically when present
