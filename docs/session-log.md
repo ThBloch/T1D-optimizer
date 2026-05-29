@@ -381,3 +381,26 @@ D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sib
 **Test count progression today:** 38 -> 62 (E17 +24) -> 70 (E11 +8) -> 77 (E15 +7).
 
 **Commits this entry:** `a9df818` E11 | `8fa8f36` E15.
+
+## 2026-05-29 (continued) e5b-session-done-command
+**Changed:**
+- New `.claude/commands/session-done.md` (10-step flow: read git state; draft session-log continuation entry; approval gate via AskUserQuestion; append on approve; run all three test suites and block on failure; explicit `git add docs/session-log.md` (never `-A`, never `.`, never untracked); generated commit message with standard Co-Authored-By; `git push` to origin/master; three-line final report).
+- `CLAUDE.md` Quick start: new `/session-done` line.
+- `docs/improvements.md`: E5b marked `[x]` with resolution note.
+- `docs/decisions-log.md`: entry appended documenting the sub-decisions (approval gate, test gate, explicit staging, no force-push).
+- Commit `d1982dd`.
+
+**Decided:**
+- E5b sub-decisions baked in at command-file authoring time (rather than asked at runtime): approval gate before any write, always push, tests must pass before commit, refuse on empty diff, explicit-files-only staging.
+- First-use smoke test note placed inside the command file itself so the responsibility is documented at the point of use.
+
+**Blocked:**
+- E13 (hookify reality-check) - still awaiting Thomas's observation of past nudge appearances.
+- E18 (WAKE_HOUR 7 -> 06:20) - still gated on E10's fixed-vs-relative wake-anchor decision.
+
+**Next (when Thomas resumes):**
+1. E19 (bolus disambiguator into `thomas_rules`, ~2-3h) - strict-P8 follow-on from today's E11 spar; E12-pattern.
+2. E14 (production-path smoke test, ~half day) - closes the integration-test gap that surfaced multiple times today.
+3. E1c (rule audit + per-rule skip toggles) - conversation-heavy walkthrough of every threshold in `rules.py` with you.
+
+**Commits this entry:** `d1982dd` E5b: /session-done slash command | `<this-commit>` Log E5b session entry.
