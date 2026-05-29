@@ -84,9 +84,7 @@ Read this before proposing new refactors.
   - Shows: last Dexcom fetch timestamp, latest Clarity CSV date in `data/`, count of unchecked items in `docs/improvements.md`, days since last dose entry in `data/doses.csv`.
   - Path: `.claude/commands/t1d-status.md`. Effort ~15 min. Not blocked - good warmup task.
 - [x] E5. Phase 1: cron-friendly scripts (~1h) - `--dose N` CLI flag on `dexcom_fetch`, remove remaining `input()` prompts. (blocks: E3, E6)
-- [ ] E5b. `/session-done` slash command - one command to log session, commit, and push.
-  - Flow: summarize what changed this session (from conversation context) -> append dated entry to `docs/session-log.md` -> `git add` changed files -> commit with generated message -> push.
-  - Effort ~30 min. Not blocked.
+- [x] E5b. `/session-done` slash command - one command to log session, commit, and push. Resolved 2026-05-29: `.claude/commands/session-done.md` implements the 10-step flow with an approval gate before the commit, mandatory test pass (`test_rules.py` + `test_night_stats.py` + `test_bolus_classification.py`) before staging, explicit `git add docs/session-log.md` (no `-A`, no `.`, no untracked files), and a fixed three-line final report. First-use smoke test note included in the command file. See decisions-log 2026-05-29.
 - [ ] E6. Phase 2: Telegram bot (~3-4h) - `python-telegram-bot` on Hetzner Frankfurt (EU/GDPR) or Raspberry Pi. Commands: `/today`, `/took N`, `/stats`. (blocked by: E5) (blocks: E7)
 - [ ] E7. Phase 3: nightly proactive push (~30m) - cron 21:30 -> bot DMs tonight's suggestion. (blocked by: E6)
   - Soft dep: needs fresh Clarity data. Either E8 or manual re-export.

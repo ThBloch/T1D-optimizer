@@ -13,6 +13,7 @@ py -X utf8 tests/test_rules.py                        # 38 unittest cases (run f
 ```
 ```
 /t1d-status                                           # 4-line snapshot: fetch age, clarity date, backlog count, last dose
+/session-done                                         # append session-log entry, run tests, commit + push (with approval gate)
 ```
 
 ## Structure
