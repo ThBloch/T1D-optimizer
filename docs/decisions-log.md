@@ -187,3 +187,17 @@ Scope intentionally minimal (Path A from the E12 spar): no changes to `.claude/c
 Doc updates: `CLAUDE.md` Quick Start + dexcom_fetch.py description list the new `--strain N` flag and the refusal behaviour; `code-conventions.md` P12 #2 reworded to reflect the new state; `architecture.md` "Purpose" #2 and "Limits" updated.
 
 **Why:** The invariant was asserted in two prose locations (`architecture.md` Purpose and `code-conventions.md` P12) while the code silently no-opped the activity branch when `s1 is None`. That contradicted the 2026-05-27 "strain non-negotiable" decision and the `feedback-strain-yesterday-invalid` memory. Path A is the smallest code change that makes the invariant true: it accepts a worse `/dose` UX today (raw wall instead of friendly prompt) in exchange for the protocol being honest. The friendly UX layer (E1b/E1d) lands separately when E1d's open prompt-wording questions are resolved. The alternative (Path C - downgrade the invariant wording) was rejected because it walks back a stated load-bearing preference.
+
+## 2026-05-29 — Memory vs decisions-log policy (E16)
+**Status:** accepted
+**Decision:** Two persistent stores hold project knowledge: `docs/decisions-log.md` (append-only, immutable, in git) and Claude auto-memory at `~/.claude/projects/D--claude-t1d/memory/` (per-Claude-instance, loaded at session start, not in git). They serve different purposes - decisions-log is the *record* (full WHY), memory is a *recall aid* (short behavioural shortcut). They are not duplicates.
+
+When they disagree, the **decisions-log wins**. Memory is updated to match; the decisions-log entry is never edited (P10 immutability).
+
+**Cross-reference convention:** any memory whose content corresponds to a decisions-log entry ends with a plain-text line of the form `Recorded in docs/decisions-log.md YYYY-MM-DD: <short slug>.` Plain text, not a wiki-link (`[[name]]` syntax is reserved for inter-memory links). Pure collaboration-pattern memories (e.g. `feedback_token_saving_priority`, `feedback_plan_before_implement`) are exempt - they describe how to work with Thomas, not project decisions.
+
+**Drift discipline:** when a project-level rule changes, write the decisions-log entry first (P10), then update or create the memory and add the cross-reference. Never update a memory that states a project-level rule without a matching decisions-log entry.
+
+This policy is codified in `docs/code-conventions.md` under "Knowledge stores: memory and decisions-log". Applied to the four overlapping memory files today: `feedback_night_quality_slope`, `feedback_rule_parameter_ownership`, `feedback_strain_yesterday_invalid`, `project_glooko_prime_detection`. The latter previously gestured at a decisions-log entry via a broken wiki-link (`[[decisions-log-glooko-prime-rule]]`); replaced with the plain-text reference.
+
+**Why:** Without a policy, future sessions could update memory independently of decisions-log, producing silently divergent guidance that a future Claude has no protocol for resolving. Memory drift is the more likely direction because memory edits are session-local and not surfaced in `git status`. The cross-reference makes the link traceable both ways: a memory's authority can be checked, and a decisions-log entry's behavioural implication can be located.

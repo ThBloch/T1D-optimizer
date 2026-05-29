@@ -153,9 +153,7 @@ Risks across E5-E9: MFA on Clarity, Dexcom ToS on automated access, UI brittlene
   - Decision: log-warn on overlap, hard-fail, or skip the duplicate. Lean: log-warn with the overlapping `(date, units, source)` tuples so the next session sees the warning.
   - Approach: at merge time, count events with same `(minute, units)` across both streams; emit one log line if non-zero.
 
-- [ ] E16. Memory vs decisions-log overlap policy.
-  - `feedback_night_quality_slope`, `feedback_rule_parameter_ownership` cover the same ground as decisions-log entries on those topics. Memory is per-Claude-instance; decisions-log is shared + durable. When they drift, which wins?
-  - Decision: state in `code-conventions.md` (or a new memory-policy section) that decisions-log is canonical and memory is per-instance interpretation. Drift = update memory or write a new decisions-log entry (never both with conflicting content).
+- [x] E16. Memory vs decisions-log overlap policy. Resolved 2026-05-29: policy codified in `docs/code-conventions.md` under "Knowledge stores: memory and decisions-log". Decisions-log is canonical; memories carry plain-text `Recorded in docs/decisions-log.md YYYY-MM-DD` cross-references when their content corresponds to a decisions-log entry. Applied to the four overlapping memories today. See decisions-log 2026-05-29.
 
 - [ ] E17. `night_stats.second_half_trend()` edge-case behaviour + direct tests.
   - Current behaviour: returns `(None, None, sh_n)` when `sh_n < SH_MIN_READINGS` (good). Returns `(0.0, ...)` when the regression denominator is 0 (single timestamp or all-equal timestamps) - silent treat-as-flat, which then makes the slope-tier branch in `rules.py` apply a "no adjustment" line.

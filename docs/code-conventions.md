@@ -118,6 +118,46 @@ mirrored here. Drift away from any of these is a red flag.
 
 ---
 
+## Knowledge stores: memory and decisions-log
+
+Two persistent stores hold project knowledge.
+
+- `docs/decisions-log.md` - full record of *why* a choice was made.
+  Append-only, immutable per P10. Lives in git; shared across
+  machines and sessions.
+- Auto-memory at `~/.claude/projects/D--claude-t1d/memory/` - short
+  behavioural shortcuts ("always do X / never do Y"). Loaded at every
+  session start. Per-Claude-Code-instance; not in git.
+
+They serve different purposes. Decisions-log is the *record*; memory
+is a *recall aid*. They are not duplicates.
+
+**Decisions-log is canonical.** When a memory and a decisions-log
+entry disagree, the decisions-log wins. Update the memory; never edit
+the decisions-log entry (P10 immutability).
+
+**Cross-reference convention.** Any memory whose content corresponds
+to a decisions-log entry ends with a plain-text line of the form:
+
+```
+Recorded in docs/decisions-log.md YYYY-MM-DD: <short slug>.
+```
+
+Plain text, not a wiki-link. Wiki-link syntax (`[[name]]`) stays
+reserved for inter-memory links.
+
+**Drift discipline.** When a project-level rule changes: write the
+decisions-log entry first (P10), then update or create the
+corresponding memory and add the cross-reference. Never update a
+memory that states a project-level rule without a matching
+decisions-log entry.
+
+Pure collaboration-pattern memories (e.g. token-saving preferences,
+plan-before-implement) are exempt - they describe how to work with
+the user, not project decisions, so no cross-reference is required.
+
+---
+
 ## How to use this file
 
 - Before adding a new script, function, or constant: pick the right
