@@ -1,4 +1,4 @@
-"""WHOOP data loader — reads from data/whoop_api/*.json (built by whoop_api_fetch.py).
+"""WHOOP data loader - reads from data/whoop_api/*.json (built by whoop_api_fetch.py).
 
 I/O + parsing only. The cycle-to-local-date mapping lives in
 `scripts/whoop_cycles.py` (P5).

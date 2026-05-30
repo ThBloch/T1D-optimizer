@@ -43,8 +43,8 @@ Append one entry per session. Format:
 - Night-quality outcome metric is **second-half glucose slope** (down = dose too high, up = too low, flat = correct), not TIR alone. Per Thomas, "this way of analysing data is also important to do." See new memory `feedback-night-quality-slope`.
 - Phase A descriptive binning insufficient on its own - tells us slope at the dose actually taken, not the optimal dose for each strain level. Phase A2 regression added to fix this.
 - Phase A2 results: 256 usable nights, `b_strain` = -0.054 mmol/L/h per strain unit, **p=0.001 (robust)**. `b_dose` weak (p=0.43 additive, p=0.02 with interaction) because Thomas's historical dose range is narrow (15-29, mostly 17-19) - can't measure dose-slope coefficient reliably from data alone.
-- Interaction model produces a singularity (b_dose + b_interact*s1 → 0 near s1=11.5), physiologically nonsense. Dropped in favor of additive model.
-- Direction confirmed by both data and Thomas's observation: low dose → glucose jumps up (under-dose); high dose → glucose drops down (over-dose). Low strain → insulin resistance (+adj); high strain → insulin sensitivity (-adj).
+- Interaction model produces a singularity (b_dose + b_interact*s1 -> 0 near s1=11.5), physiologically nonsense. Dropped in favor of additive model.
+- Direction confirmed by both data and Thomas's observation: low dose -> glucose jumps up (under-dose); high dose -> glucose drops down (over-dose). Low strain -> insulin resistance (+adj); high strain -> insulin sensitivity (-adj).
 - Used Thomas's bolus ISF (~1.5-2.0 mmol/L per unit) to estimate Lantus basal slope coefficient at ~0.09 mmol/L/h per unit - working number, can revise. Thomas pushed back that thresholds must be data-driven; treat the clinical prior as a fallback only where data underdetermines.
 - E1b (WHOOP in-progress cycle indexing fix) initially treated as out of scope; **later elevated** - see continuation below.
 **Blocked:** Phase B encoding gated on Thomas signing off on the 6-tier threshold table. Current proposed table (data-anchored to observed per-bin slopes from binning report):
@@ -404,3 +404,34 @@ D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sib
 3. E1c (rule audit + per-rule skip toggles) - conversation-heavy walkthrough of every threshold in `rules.py` with you.
 
 **Commits this entry:** `d1982dd` E5b: /session-done slash command | `<this-commit>` Log E5b session entry.
+
+## 2026-05-30 hooks-global-migration (platform work; full entry in claude-setup/session-log.md)
+**Changed:** `.claude/hookify.{creds-commit-guard,decisions-log-reminder,run-tests-reminder}.local.md` set `enabled: false`.
+**Why:** Superseded by global standalone hooks in `D:\claude-config\.claude\settings.json` (`creds-commit-guard.py`, `session-end-checks.py`, `session-start-inject.py`) that fire regardless of launch dir and are project-aware - t1d's `docs/decisions-log.md` + `tests/` now trigger the decisions-log and run-tests reminders from any cwd. hookify's loader is cwd-bound, so the local rules never fired from the workspace root, and Stop-rule output is invisible.
+**Resolves:** the E13 "hookify reality-check" question (was blocked awaiting Thomas's observation) - the rules genuinely never fired globally; root cause now fixed at the platform layer.
+**Note:** pre-existing bug found - `hookify.run-tests-reminder.local.md` had `name: decisions-log-reminder` inside it.
+**Next:** none t1d-side. Live-confirm the reminders appear next time you edit a t1d script and submit a prompt.
+
+## 2026-05-30 (continued) dose-cmd-reorder-parse-fix-ascii
+**Changed:**
+- `.claude/commands/dose.md` - rewritten step order: NEW_PEN first (only genuine precondition), DOSE demoted to conditional step 3 (only asked when run reports no anchor), NEEDS:strain branch added (step 4), guard for no-suggestion output added (step 6), FACTORS moved last (step 7)
+- `scripts/dexcom_loader.py` - clamp Clarity out-of-range sentinels: `Hoj` -> GLUCOSE_HIGH_CLAMP=22.2, `Lav` -> GLUCOSE_LOW_CLAMP=2.2; skip header rows explicitly; parse warning now only fires on genuinely malformed rows
+- `docs/decisions-log.md` - two new 2026-05-30 entries: glucose clamp + ASCII normalization pass
+- ASCII normalization pass across all repo files: em-dash -> hyphen, en-dash -> hyphen, Unicode arrows -> ->, plusminus -> +/-. Scope: docs/*.md, .claude/commands/*.md, CLAUDE.md, scripts/*.py (comments/docstrings only; Danish CSV strings untouched)
+- `CLAUDE.md` "Working preferences" - added one-line explicit ASCII rule override
+
+**Decided:**
+- Clamp boundaries: 22.2 / 2.2 mmol/L (G7 hardware limits, matching Clarity's own stats). Alternative (2.1/22.3) declined.
+- dose.md step order: conditional re-runs driven by script output, not upfront prompting. Cascade: anchor -> strain -> hypo.
+- Global ASCII rule applies to all t1d repo files with no exceptions except Danish CSV match strings (Hoj, Lav, field names).
+- Decisions-log immutability: punctuation normalization treated as formatting pass (parallel to 2026-05-23 Status-line retrofit), not content edit.
+
+**Blocked:**
+- E18 still gated on E10. E19 (bolus into thomas_rules) and E20 (test_inferential_predictor.py) unstarted.
+
+**Next (when Thomas resumes):**
+1. E19 (bolus disambiguator into `thomas_rules`, ~2-3h) - strict-P8 follow-on.
+2. E14 (production-path smoke test, ~half day).
+3. E1c (rule audit + per-rule skip toggles).
+
+**Commits this entry:** `<this-commit>` Log session entry for dose-cmd-reorder + parse-fix + ASCII normalization.

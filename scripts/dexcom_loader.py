@@ -11,6 +11,10 @@ from pathlib import Path
 DATA_DIR  = Path(__file__).resolve().parent.parent / 'data'
 DIAGNOSIS = date(2025, 4, 9)
 
+# Dexcom G7 measurable range; Clarity writes 'Høj'/'Lav' outside it.
+GLUCOSE_HIGH_CLAMP = 22.2   # mmol/L (400 mg/dL)
+GLUCOSE_LOW_CLAMP  = 2.2    # mmol/L (40 mg/dL)
+
 
 def load_dexcom():
     """Read all Clarity_*.csv exports under DATA_DIR and return three structures.
@@ -36,7 +40,7 @@ def load_dexcom():
                 esub  = row[3].strip().strip('"')
                 gval  = row[7].strip().strip('"')
                 ival  = row[8].strip().strip('"')
-                if not ts or 'T' not in ts:
+                if not ts or 'T' not in ts or ts.startswith('Tidsstempel'):
                     continue
                 try:
                     dt = datetime.strptime(ts, '%Y-%m-%dT%H:%M:%S')
@@ -47,10 +51,15 @@ def load_dexcom():
                     continue
 
                 if etype == 'Estimeret glukoseværdi' and gval:
-                    try:
-                        glucose[dt] = float(gval.replace(',', '.'))
-                    except ValueError:
-                        skipped_parse += 1
+                    if gval == 'Høj':
+                        glucose[dt] = GLUCOSE_HIGH_CLAMP
+                    elif gval == 'Lav':
+                        glucose[dt] = GLUCOSE_LOW_CLAMP
+                    else:
+                        try:
+                            glucose[dt] = float(gval.replace(',', '.'))
+                        except ValueError:
+                            skipped_parse += 1
 
                 if etype == 'Insulin' and ival:
                     try:
@@ -65,8 +74,8 @@ def load_dexcom():
                         bolus_ts.add((dt, units))
 
     if skipped_parse:
-        print(f'[dexcom_loader] skipped {skipped_parse} rows due to parse errors '
-              f'(check Clarity export locale/format)')
+        print(f'[dexcom_loader] skipped {skipped_parse} unparseable row(s) '
+              f'(genuine malformed data - inspect export)')
 
     basal_by_date = {}
     for dt, units in sorted(basal_ts.items()):

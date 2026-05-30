@@ -79,6 +79,7 @@ The `decisions-log-reminder` hookify rule reminds at session end if `scripts/*.p
 - Read `docs/improvements.md` before proposing new refactors.
 - Read `docs/code-conventions.md` before adding new scripts, constants, or rule branches - P1-P12 decide where each thing lives.
 - Reference file paths instead of pasting file contents.
+- Global ASCII rule (C:\Users\thblo\.claude\CLAUDE.md section 3) applies to all files in this repo - docs, code, and commands. Use hyphen not em-dash, straight quotes not curly, ASCII arrows (->) not Unicode, etc. Exceptions: Danish data strings that must match CSV content (Høj, Lav, field names) are never touched.
 
 ## Compaction
 

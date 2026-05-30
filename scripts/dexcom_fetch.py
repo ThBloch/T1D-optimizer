@@ -1,5 +1,5 @@
 """
-dexcom_fetch.py — Daily glucose fetch for dose recommendation.
+dexcom_fetch.py - Daily glucose fetch for dose recommendation.
 Pulls last 24h from Dexcom Share API (no CSV export needed).
 Run: py -X utf8 dexcom_fetch.py
 """
@@ -24,7 +24,7 @@ def load_creds():
         with open(CREDS_FILE, encoding='utf-8') as f:
             return json.load(f)
     print("No credentials file found. Enter Dexcom Share credentials.")
-    print("(These are your Dexcom account login — not a follower account.)")
+    print("(These are your Dexcom account login - not a follower account.)")
     username = input("Dexcom username (email): ").strip()
     password = getpass.getpass("Dexcom password: ")
     save = input("Save to dexcom_creds.json? (y/n): ").strip().lower()
@@ -76,7 +76,7 @@ def run():
 
     if stats is None:
         print(f"\nNot enough readings for overnight window ({yesterday} {OVN_START}:00 -> {today} {WAKE_HOUR}:00).")
-        print(f"Readings available: {len(readings)} — oldest: {readings[0][0].strftime('%H:%M %d-%m')}")
+        print(f"Readings available: {len(readings)} - oldest: {readings[0][0].strftime('%H:%M %d-%m')}")
         print(trend_note)
         return
 

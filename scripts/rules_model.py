@@ -1,5 +1,5 @@
 """
-Thomas's Rules — backtest + ML optimization
+Thomas's Rules - backtest + ML optimization
 ============================================
 1. Encode the rules exactly as described
 2. Backtest on full dataset: what dose would the rules have suggested each night?
@@ -37,7 +37,7 @@ def main():
 
     # ── BACKTEST THOMAS'S RULES ────────────────────────────────────────────────────
     print('='*70)
-    print('THOMAS\'S RULES — BACKTEST')
+    print('THOMAS\'S RULES - BACKTEST')
     print('='*70)
 
     results = []
@@ -78,7 +78,7 @@ def main():
 
     print(f'\n  Nights evaluated   : {n_total}')
     print(f'  Exact agreement    : {n_agree} ({n_agree/n_total*100:.1f}%)')
-    print(f'  Within ±1u         : {n_close} ({n_close/n_total*100:.1f}%)')
+    print(f'  Within +/-1u         : {n_close} ({n_close/n_total*100:.1f}%)')
     print(f'  Mean diff (actual-suggested): {mean_diff:+.2f}u')
     print(f'  MAE (dose units)   : {mae_diff:.2f}u')
 
@@ -120,7 +120,7 @@ def main():
     under = [r for r in results if r['diff'] < -1]  # actual dosed LESS than rules suggest
     match = [r for r in results if abs(r['diff']) <= 1]
 
-    for label, grp in [('Rules ≈ actual (±1u)', match),
+    for label, grp in [('Rules ≈ actual (+/-1u)', match),
                        ('Actual > rules (+2u or more)', over),
                        ('Actual < rules (-2u or more)', under)]:
         if not grp: continue
@@ -134,13 +134,13 @@ def main():
 
     # ── ML: DECISION TREE TO LEARN OPTIMIZED THRESHOLDS ───────────────────────────
     print(f'\n{"="*70}')
-    print('DECISION TREE — LEARNING THRESHOLDS FROM DATA')
+    print('DECISION TREE - LEARNING THRESHOLDS FROM DATA')
     print('Note: target = actual dose used (learns user behaviour)')
     print('='*70)
 
     # Features: prev_fasting, prev_hypo_events, s1 (today), yesterday_dose
     # Target: today's actual dose
-    # Time-based split (results not used directly — rebuild below with prev_dose)
+    # Time-based split (results not used directly - rebuild below with prev_dose)
 
     # Rebuild with explicit prev_dose
     results2 = []
@@ -177,7 +177,7 @@ def main():
     X_train, y_train = to_Xy(train2)
     X_test,  y_test  = to_Xy(test2)
 
-    # Decision tree — shallow for interpretability
+    # Decision tree - shallow for interpretability
     dt = DecisionTreeRegressor(max_depth=4, min_samples_leaf=10, random_state=42)
     dt.fit(X_train, y_train)
     dt_test_mae  = mean_absolute_error(y_test,  dt.predict(X_test))

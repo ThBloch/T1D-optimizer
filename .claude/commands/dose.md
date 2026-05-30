@@ -4,35 +4,48 @@ description: Get tonight's basal dose suggestion from live Dexcom data
 
 # /dose
 
-Gather inputs, run dexcom_fetch.py non-interactively, output terse suggestion.
+Run dexcom_fetch.py, then react to what it reports. Every prompt below is
+conditional on the run's output - do not gather inputs up front.
 
 ## Steps
 
-1. Ask the user: "What dose did you take last night? (units)"
-   Store the answer as DOSE.
+Maintain a FLAGS string, initially empty. Append to it as conditions are
+discovered, and re-run the command (replacing OUTPUT) after each change.
 
-2. Ask the user: "New pen cartridge tonight? (y/n)"
-   If y, set NEW_PEN_FLAG to `--new-pen`, otherwise empty string.
+1. Ask: "New pen cartridge tonight? (y/n)"
+   If y, append `--new-pen` to FLAGS.
 
-3. Ask the user: "Any unmodeled factors? (alcohol / late meal / illness / activity not in WHOOP — or 'none')"
+2. Run:
+   ```bash
+   cd "D:/claude/t1d/scripts" && py -X utf8 dexcom_fetch.py FLAGS
+   ```
+   Capture full stdout as OUTPUT. (FLAGS expands to the flags collected so
+   far; empty on the first run.)
+
+3. Anchor dose. If OUTPUT contains `no anchor dose on file`:
+   - Ask: "What dose did you take last night? (units)" -> DOSE
+   - Append `--dose DOSE` to FLAGS, re-run step 2, replace OUTPUT.
+
+4. Strain. If OUTPUT contains `NEEDS: strain`:
+   - Ask: "Today's WHOOP strain isn't synced yet. What's today's strain?" -> STRAIN
+   - Append `--strain STRAIN` to FLAGS, re-run step 2, replace OUTPUT.
+
+5. Hypo. If OUTPUT has a line matching `Hypo events.*: [1-9]`:
+   - Ask: "CGM detected N hypo(s) last night. Sensor noise? (y/n)"
+   - If y: append `--no-hypo` to FLAGS, re-run step 2, replace OUTPUT.
+
+6. Guard. If OUTPUT has no `Suggested dose` line: print the `Not enough readings`
+   line from OUTPUT verbatim and stop. Skip the remaining steps. (Sensor-gap
+   night - the overnight window held fewer than 4 CGM points.)
+
+7. Ask: "Any unmodeled factors? (alcohol / late meal / illness / activity not in WHOOP - or 'none')"
    Store as FACTORS.
 
-4. Run from project root `D:\claude\t1d`:
-   ```bash
-   cd "D:/claude/t1d/scripts" && py -X utf8 dexcom_fetch.py --dose DOSE NEW_PEN_FLAG
-   ```
-   Capture full stdout as OUTPUT.
-
-5. Check OUTPUT for hypo events:
-   - Find the line matching `Hypo events.*: [1-9]`
-   - If found, ask: "CGM detected N hypo(s) last night. Sensor noise? (y/n)"
-   - If y: re-run the same command with `--no-hypo` added, replace OUTPUT with new stdout.
-
-6. Extract from OUTPUT:
+8. Extract from OUTPUT:
    - Suggested dose: find line matching `Suggested dose\s*:\s*(\S+)` -> SUGGESTION
    - Reasoning: collect all lines starting with `    * ` -> REASONS
 
-7. Print:
+9. Print:
    ```
    Tonight: SUGGESTION
    * reason 1

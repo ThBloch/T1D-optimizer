@@ -92,7 +92,7 @@ def main():
     print()
     print('='*70)
     print('3. IS BOLUS EFFECT MEDIATED THROUGH inj_g?')
-    print('   (Spearman of bolus vs inj_g — if high, bolus is already captured)')
+    print('   (Spearman of bolus vs inj_g - if high, bolus is already captured)')
     print('='*70)
     for key, label in [('bolus_total','Total daily bolus'),
                        ('bolus_4h','Bolus in 4h before injection'),
@@ -123,12 +123,12 @@ def main():
 
     print()
     print('='*70)
-    print('5. BOLUS DISTRIBUTION — how often and how much before injection?')
+    print('5. BOLUS DISTRIBUTION - how often and how much before injection?')
     print('='*70)
     b4h_nonzero = [n['bolus_4h'] for n in clean if n['bolus_4h']>0]
     if b4h_nonzero:
         print(f'  Nights with bolus in 4h window: {len(b4h_nonzero)} ({len(b4h_nonzero)/len(clean)*100:.1f}%)')
-        print(f'  When present — mean: {round(sum(b4h_nonzero)/len(b4h_nonzero),1)}u  '
+        print(f'  When present - mean: {round(sum(b4h_nonzero)/len(b4h_nonzero),1)}u  '
               f'median: {sorted(b4h_nonzero)[len(b4h_nonzero)//2]}u  '
               f'max: {max(b4h_nonzero)}u')
         # TIR with vs without pre-injection bolus

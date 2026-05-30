@@ -56,12 +56,12 @@ def main():
 
     nights.sort(key=lambda x: x['date'])
     print(f'Clean nights for modelling: {len(nights)}')
-    print(f'Date range: {nights[0]["date"]} → {nights[-1]["date"]}')
+    print(f'Date range: {nights[0]["date"]} -> {nights[-1]["date"]}')
 
     # ── FEATURES ───────────────────────────────────────────────────────────────────
     # Core features: inj_g, s1, dose
     # Extended: + hrv, recovery, rhr
-    # s1 missing in ~5% of nights — imputed with median in pipeline
+    # s1 missing in ~5% of nights - imputed with median in pipeline
 
     FEATURES_CORE = ['inj_g', 's1', 'dose']
     FEATURES_EXT  = ['inj_g', 's1', 'dose', 'hrv', 'recovery', 'rhr']
@@ -77,8 +77,8 @@ def main():
     train_nights = nights[:split_idx]
     test_nights  = nights[split_idx:]
 
-    print(f'\nTrain: {len(train_nights)} nights ({train_nights[0]["date"]} → {train_nights[-1]["date"]})')
-    print(f'Test:  {len(test_nights)} nights  ({test_nights[0]["date"]} → {test_nights[-1]["date"]})')
+    print(f'\nTrain: {len(train_nights)} nights ({train_nights[0]["date"]} -> {train_nights[-1]["date"]})')
+    print(f'Test:  {len(test_nights)} nights  ({test_nights[0]["date"]} -> {test_nights[-1]["date"]})')
 
     # ── MODELS ─────────────────────────────────────────────────────────────────────
     def make_pipeline(model):
@@ -100,7 +100,7 @@ def main():
     }
 
     print('\n' + '='*65)
-    print('MODEL EVALUATION — TIR% PREDICTION')
+    print('MODEL EVALUATION - TIR% PREDICTION')
     print('='*65)
 
     best_model = None
@@ -117,7 +117,7 @@ def main():
         X_test,  y_test,  _ = build_matrix(test_nights,  features)
 
         for name, _ in models.items():
-            # Fresh pipeline each time — avoid cross-feature contamination
+            # Fresh pipeline each time - avoid cross-feature contamination
             if 'Linear' in name:
                 pipe = make_pipeline(Ridge(alpha=1.0))
             elif 'Forest' in name:
@@ -148,7 +148,7 @@ def main():
 
     # ── RESIDUAL ANALYSIS ──────────────────────────────────────────────────────────
     print('\n' + '='*65)
-    print('TEST SET RESIDUALS — Best model on core features')
+    print('TEST SET RESIDUALS - Best model on core features')
     print('='*65)
 
     X_test_core, y_test_core, _ = build_matrix(test_nights, FEATURES_CORE)
@@ -157,8 +157,8 @@ def main():
 
     print(f'\n  Mean residual    : {np.mean(residuals):+.1f}% (bias)')
     print(f'  Std of residuals : {np.std(residuals):.1f}%')
-    print(f'  Within ±10% TIR  : {np.mean(np.abs(residuals)<=10)*100:.1f}% of nights')
-    print(f'  Within ±20% TIR  : {np.mean(np.abs(residuals)<=20)*100:.1f}% of nights')
+    print(f'  Within +/-10% TIR  : {np.mean(np.abs(residuals)<=10)*100:.1f}% of nights')
+    print(f'  Within +/-20% TIR  : {np.mean(np.abs(residuals)<=20)*100:.1f}% of nights')
 
     print(f'\n  {"Date":<12} {"Dose":>5}  {"inj_g":>6}  {"s1":>5}  {"Actual TIR":>10}  {"Pred TIR":>9}  {"Residual":>9}')
     print(f'  {"-"*65}')

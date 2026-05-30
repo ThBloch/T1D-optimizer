@@ -1,5 +1,5 @@
 """
-T1D Basal Analysis — Thomas Bloch-Nielsen
+T1D Basal Analysis - Thomas Bloch-Nielsen
 Clean build: loads raw Dexcom + WHOOP, no prior assumptions.
 Run: py basal_analysis.py
 """
@@ -59,7 +59,7 @@ def linreg(x, y):
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 def run():
     print("=" * 65)
-    print("  T1D BASAL ANALYSIS — Thomas Bloch-Nielsen")
+    print("  T1D BASAL ANALYSIS - Thomas Bloch-Nielsen")
     print(f"  Run date: {date.today()}")
     print("=" * 65)
 
@@ -72,15 +72,15 @@ def run():
     b_dates = [d for _, d, _ in basal_list]
 
     print(f"\n  DATA LOADED")
-    print(f"  CGM          : {len(glucose_list):,} readings | {g_start} → {g_end}")
-    print(f"  Basal doses  : {len(basal_list)} injections | {min(b_dates)} → {max(b_dates)}")
+    print(f"  CGM          : {len(glucose_list):,} readings | {g_start} -> {g_end}")
+    print(f"  Basal doses  : {len(basal_list)} injections | {min(b_dates)} -> {max(b_dates)}")
     print(f"  Bolus days   : {len([v for v in bolus.values() if v > 0])} days with bolus logged")
     print(f"  WHOOP days   : {len(strain_by_date)} days with strain data")
 
     # ── STEP 2: Build nightly paired dataset ──────────────────────────────
     nights = []  # list of dicts per injection night
     for inj_dt, inj_date, dose in basal_list:
-        if inj_dt.hour < 18:   # skip daytime basal — expect ~22:00
+        if inj_dt.hour < 18:   # skip daytime basal - expect ~22:00
             continue
         readings = overnight_window(inj_dt, glucose_list)
         stats    = night_stats(readings)
@@ -109,7 +109,7 @@ def run():
     print(f"\n  Overnight nights with sufficient CGM data: {len(nights)}")
 
     # ── STEP 3: Exclude confounders ───────────────────────────────────────
-    # Exclude hypo-correction nights: dose was clearly too high — using these
+    # Exclude hypo-correction nights: dose was clearly too high - using these
     # in the matching pool would bias the dose range downward incorrectly.
     # They ARE kept in the weekly summary for visibility.
     hypo_corr_dates = {n['date'] for n in nights if n['hypo_correction']}
@@ -139,9 +139,9 @@ def run():
     # Validated predictors (from predictor_test.py):
     #   inj_g  r=-0.36 ***  (strongest)
     #   s1     r=0.245 **
-    #   s7     r=0.078 ns  — dropped from matching
+    #   s7     r=0.078 ns  - dropped from matching
     #
-    # Match on: inj_g ±2.5 mmol/L  AND  s1 ±3.0 (if today s1 available)
+    # Match on: inj_g +/-2.5 mmol/L  AND  s1 +/-3.0 (if today s1 available)
     INJ_WINDOW = 2.5
     S1_WINDOW  = 3.0
 
@@ -165,7 +165,7 @@ def run():
     n_comp = len(comparable)
 
     # ── STEP 6: Statistics ─────────────────────────────────────────────────
-    # Outcomes: fasting, mean overnight, tir (5–8 range as per prompt)
+    # Outcomes: fasting, mean overnight, tir (5-8 range as per prompt)
     def outcome_stats(subset):
         if not subset:
             return {}
@@ -202,7 +202,7 @@ def run():
     # ── BLOCK 2 ───────────────────────────────────────────────────────────
     last7 = [n for n in nights if n['date'] >= today - timedelta(days=7)]
     print(f"\n{'='*65}")
-    print(f"  WEEKLY PATTERN (last 7 nights, {today-timedelta(days=6)} → {today})")
+    print(f"  WEEKLY PATTERN (last 7 nights, {today-timedelta(days=6)} -> {today})")
     print(f"{'='*65}")
     print(f"\n  {'Date':<12} {'Dose':>5}  {'S1':>5}  {'Fasting':>8}  {'Mean':>6}  {'TIR%':>6}  {'Hypo%':>6}  {'Note'}")
     print(f"  {'-'*78}")
@@ -255,7 +255,7 @@ def run():
     # ── APPENDIX ──────────────────────────────────────────────────────────
     inj_g_str = f"{current_inj_g:.1f} mmol/L" if current_inj_g else "unknown"
     print(f"\n{'='*65}")
-    print(f"  APPENDIX — STATISTICAL DETAIL  (n={n_comp} comparable nights)")
+    print(f"  APPENDIX - STATISTICAL DETAIL  (n={n_comp} comparable nights)")
     print(f"{'='*65}")
 
     if n_comp >= 5:
@@ -265,21 +265,21 @@ def run():
         print(f"  {'-'*42}")
         for label, key in [('Fasting glucose','spearman_fasting'),
                             ('Mean overnight','spearman_mean'),
-                            ('TIR% (5–8)','spearman_tir')]:
+                            ('TIR% (5-8)','spearman_tir')]:
             r, p = stats[key]
             if r is not None:
                 sig = '*' if p < 0.05 else ''
                 print(f"  {label:<25} {r:>7.3f}  {p:>8.4f} {sig}")
 
-        print(f"\n  Linear regression: dose → outcomes")
+        print(f"\n  Linear regression: dose -> outcomes")
         print(f"  {'Outcome':<25} {'coef':>7}  {'R²':>6}  {'95% CI':>10}")
         print(f"  {'-'*52}")
         for label, key in [('Fasting glucose','reg_fasting'),
                             ('Mean overnight','reg_mean'),
-                            ('TIR% (5–8)','reg_tir')]:
+                            ('TIR% (5-8)','reg_tir')]:
             reg = stats[key]
             if reg:
-                ci_str = f"±{reg['ci95']}" if reg['ci95'] else 'N/A'
+                ci_str = f"+/-{reg['ci95']}" if reg['ci95'] else 'N/A'
                 print(f"  {label:<25} {reg['b1']:>7.3f}  {reg['r2']:>6.3f}  {ci_str:>10}")
 
         print(f"\n  Per-night detail (comparable nights, sorted by dose):")
@@ -289,7 +289,7 @@ def run():
             print(f"  {str(n['date']):<12} {n['dose']:>4.0f}u  "
                   f"{n['fasting']:>7.1f}  {n['mean']:>5.1f}  {n['tir']:>5.1f}  {n['hypo_pct']:>5.1f}")
     else:
-        print(f"\n  n={n_comp} — insufficient for statistics. Need ≥5 comparable nights.")
+        print(f"\n  n={n_comp} - insufficient for statistics. Need ≥5 comparable nights.")
 
     print(f"\n  Current context:")
     print(f"    Inj-time glucose = {inj_g_str}")
