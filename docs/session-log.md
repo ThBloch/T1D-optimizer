@@ -435,3 +435,24 @@ D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sib
 3. E1c (rule audit + per-rule skip toggles).
 
 **Commits this entry:** `<this-commit>` Log session entry for dose-cmd-reorder + parse-fix + ASCII normalization.
+
+## 2026-06-02 todo-audit-and-cleanup
+**Changed:**
+- `docs/improvements.md` - E13 marked done (resolved 2026-05-30 via global hooks). Commit `0410761`.
+- `CLAUDE.md` Scripts section - `basal_analysis.py` and `rules_model.py` descriptions updated: removed stale "tonight's suggestion" / "main analysis (tonight's range)" labels missed when Phase 7 updated the Quick start. Commit `0410761`.
+
+**Decided:**
+- Audited all "untracked pending changes" from the 2026-05-28 architecture-doc-walkthrough session. All were already shipped in the 2026-05-29 sessions: FASTING_LO 10.5->10.0, hypo-correction threshold 7->10, iqr_bolus_outlier removal, architecture.md section 1 rewrite, all four decisions-log entries. Nothing was actually missing there.
+- One genuine stale item found: CLAUDE.md Scripts section had not been updated alongside the Quick start in Phase 7.
+
+**Blocked:**
+- E1b/E1d: gated on Thomas deciding the "skip strain?" question.
+- E18 (WAKE_HOUR 7->06:20): gated on E10 fixed-vs-relative wake-anchor decision.
+
+**Next (when Thomas resumes):**
+1. E19 (bolus disambiguator into `thomas_rules`, ~2-3h) - strict-P8 follow-on; same E12 pattern.
+2. E20 (`tests/test_inferential_predictor.py`, ~half day) - P9 strict follow-on; unblocked but never in a Next list.
+3. E14 (production-path smoke test, ~half day).
+4. E1c (rule audit + per-rule skip toggles).
+
+**Commits this entry:** `0410761` Mark E13 done; fix stale script labels in CLAUDE.md | `<this-commit>` Log 2026-06-02 session entry.
