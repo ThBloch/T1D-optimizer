@@ -103,7 +103,7 @@ Risks across E5-E9: MFA on Clarity, Dexcom ToS on automated access, UI brittlene
   - Weighting: second half of night > first half. Optimize for stability and on-target landing in the hours before wake, even at the cost of more deviation earlier in the night.
   - Open definitions (resolve with Thomas before encoding):
     - "Bedtime" = injection-time glucose (`vals[0]` in `compute_night_stats`)? Or first CGM reading after sleep-onset?
-    - "Wake-up" anchor: 06:20 = Thomas's weekday alarm (decided 2026-05-28); goal is actual wake glucose. Open: fixed 06:20 daily vs wake-time-relative (variable by day for weekends / sick days / sleep-ins).
+    - "Wake-up" anchor: **fixed 06:20 daily** (decided 2026-06-02). Variable wake time from WHOOP sleep data is technically feasible (sleep record `end` field is available in cache for closed cycles) but was rejected for the slope window: dawn phenomenon is circadian, not wake-relative - the pre-dawn glucose rise fires at roughly the same clock time regardless of actual wake. A sleep-in weekend extends the window into the post-dawn climb, making slopes look steeper and incomparable to weekday windows. Fixed cutoff is more consistent for cross-night slope comparison. Note: WHOOP-derived wake time could still be useful for the fasting reading specifically (actual wake glucose vs fixed-cutoff proxy) - a separate future consideration.
     - "Flat" metric: SD, range, MAGE, or time outside +/-1.5 mmol/L band from bedtime? Pick one and justify.
     - "Second half" boundary: clock-based (e.g. 02:30) or fraction-based (last 50% of CGM points)?
     - Weighting function: hard split (e.g. 70/30) or gradient (linear ramp toward wake)?
@@ -158,8 +158,7 @@ Risks across E5-E9: MFA on Clarity, Dexcom ToS on automated access, UI brittlene
 
 - [ ] E18. WAKE_HOUR 7 -> 06:20 (R22 from the 2026-05-28 audit, the last un-shipped redesign item).
   - `scripts/night_stats.py:14` currently sets `WAKE_HOUR = 7`. Thomas's weekday alarm is 06:20; both the slope rule's overnight window and the fasting fallback end at the `WAKE_HOUR` boundary, so moving to 06:20 shifts both signals and can move suggestions.
-  - Open design question (parked at E10): fixed 06:20 daily, or wake-time-relative (variable by day for weekends / sick days / sleep-ins)? Fixed 06:20 is one line in `night_stats.py`. Wake-time-relative needs a sleep-end signal (likely WHOOP cycle end) plus a per-night lookup, and changes the function signature for `overnight_window()`.
-  - Pending E10's broader design discussion; whichever option ships needs a decisions-log entry first (rule-affecting change per P10).
+  - Design question resolved 2026-06-02: fixed 06:20 (see E10 wake-up anchor note). This is a one-line change in `night_stats.py`. Needs a decisions-log entry before shipping (rule-affecting change per P10).
 
 ---
 

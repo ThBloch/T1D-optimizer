@@ -456,3 +456,23 @@ D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sib
 4. E1c (rule audit + per-rule skip toggles).
 
 **Commits this entry:** `0410761` Mark E13 done; fix stale script labels in CLAUDE.md | `<this-commit>` Log 2026-06-02 session entry.
+
+## 2026-06-02 (continued) e10-wake-anchor-decision
+**Changed:**
+- `docs/improvements.md` - E10 wake-up anchor open question closed: fixed 06:20 decided (2026-06-02). Added dawn phenomenon rationale (circadian, not wake-relative; variable window makes weekend slopes incomparable to weekday slopes). E18 blocker language updated: design question resolved, only decisions-log entry + one-line code change remain.
+
+**Decided:**
+- Wake-up anchor for the overnight slope window is fixed 06:20, not WHOOP-derived variable wake time. Dawn phenomenon fires at a roughly fixed clock time regardless of actual wake; a sleep-in weekend would extend the window into the post-dawn rise, inflating sh_slope and making cross-night comparisons inconsistent. Fixed cutoff is more defensible for slope analysis.
+- WHOOP sleep end time is technically available (cache, closed cycles) and could be useful for the fasting reading specifically - noted as a separate future consideration, not part of E18.
+
+**Blocked:**
+- E18 (WAKE_HOUR 7->06:20 code change): unblocked on design, now only needs a decisions-log entry before the one-line `night_stats.py` edit ships (P10).
+- E1b/E1d: gated on Thomas deciding the "skip strain?" question.
+
+**Next (when Thomas resumes):**
+1. E18 (WAKE_HOUR 7->06:20): write the decisions-log entry, then change `night_stats.py:14`. ~15 min.
+2. E19 (bolus disambiguator into `thomas_rules`, ~2-3h).
+3. E20 (`tests/test_inferential_predictor.py`, ~half day).
+4. E14 (production-path smoke test, ~half day).
+
+**Commits this entry:** `<this-commit>` Log 2026-06-02 (continued) e10-wake-anchor-decision.
