@@ -131,10 +131,7 @@ Risks across E5-E9: MFA on Clarity, Dexcom ToS on automated access, UI brittlene
 
 - [x] E12. P12 invariant #2 ("strain MUST inform every suggestion") vs actual code enforcement. Resolved 2026-05-29 via Path A (minimal NEEDS-line enforcement). `dexcom_fetch.py` now emits `NEEDS: strain` and refuses to compute a suggestion when today's WHOOP strain is unavailable; new `--strain N` flag overrides cache lookup. The friendly `/dose` side (parse `NEEDS:`, ask via documented prompt) remains E1b/E1d work. See decisions-log 2026-05-29.
 
-- [ ] E13. Hookify reality-check - do `decisions-log-reminder` and `run-tests-reminder` actually fire?
-  - No evidence either fired during the 9-phase redesign despite repeated `scripts/*.py` edits. Could be classifier blocking, transcript pattern miss, firing-but-invisible, or something else.
-  - Approach: end a session with a clear `scripts/*.py` edit and no test run; verify the stop-event reminder lands. If silent, debug. If theatre, the discipline P10 claims to enforce is theatre too.
-  - Effort: minutes if hooks fire; ~hour if they need debugging.
+- [x] E13. Hookify reality-check. Resolved 2026-05-30: global standalone hooks in `D:\claude-config\.claude\settings.json` (`creds-commit-guard.py`, `session-end-checks.py`, `session-start-inject.py`) now fire for t1d scripts regardless of launch dir. Local hookify rules were cwd-bound and never fired from the workspace root; pre-existing bug found (`hookify.run-tests-reminder.local.md` had wrong `name:` field). All three local rules set to `enabled: false` (superseded by global hooks).
 
 - [ ] E14. Production-path smoke test (integration test for `dexcom_fetch.py` end-to-end).
   - 38 unit tests cover `thomas_rules` (pure function). Zero integration tests cover the production path: Dexcom fetch -> `night_stats` -> rules -> diary upsert. Regression in any signature or import is undetected until `/dose` is run live.

@@ -29,8 +29,8 @@ output/                   generated reports (not committed)
 ```
 
 ## Scripts
-- `basal_analysis.py` — main analysis (matching model, weekly pattern, tonight's range)
-- `rules_model.py` — Thomas's rules backtest + Decision Tree comparison + tonight's suggestion
+- `basal_analysis.py` — weekly pattern (research): matching model, comparable-night stats, regression appendix
+- `rules_model.py` — backtest report (research): Thomas's rules backtest + Decision Tree comparison
 - `predictor_test.py`, `ml_model.py`, `bolus_noise_test.py` — secondary analyses
 - `inferential_predictor.py` — Phase 5 / R8 analysis: chooses best slope-vs-signals model spec via F-test, computes per-night inferred optimal dose, ranks candidate signals via direct + partial + inferential Spearman with convergence-based tier (HIGH/MED/LOW). Output to `output/inferential_predictor.txt`.
 - `strain_binning_analysis.py`, `strain_regression_analysis.py` — Phase A2 strain → slope analyses; the regression module exposes `fit_ols` for reuse.
