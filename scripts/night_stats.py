@@ -3,15 +3,15 @@
 Single source of truth for overnight window slicing, per-night stats,
 and second-half slope computation.
 
-Constants exported: HYPO_THR, WAKE_HOUR, OVN_START,
+Constants exported: HYPO_THR, WAKE_TIME, OVN_START,
                     CLINICAL_TIR_LO/HI (4-10), TARGET_LO/HI (5-8),
                     SECOND_HALF_FRACTION, SH_MIN_READINGS.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 
 HYPO_THR    = 4.0
-WAKE_HOUR   = 7
+WAKE_TIME   = time(6, 20)
 OVN_START   = 22
 
 CLINICAL_TIR_LO = 4.0
@@ -26,11 +26,8 @@ SH_MIN_READINGS      = 10
 
 
 def overnight_window(inj_dt, glucose_list):
-    """Readings from inj_dt through WAKE_HOUR:00 next morning."""
-    end = datetime.combine(
-        inj_dt.date() + timedelta(days=1),
-        datetime.min.time().replace(hour=WAKE_HOUR)
-    )
+    """Readings from inj_dt through WAKE_TIME (06:20) next morning."""
+    end = datetime.combine(inj_dt.date() + timedelta(days=1), WAKE_TIME)
     return [(dt, v) for dt, v in glucose_list if inj_dt <= dt <= end]
 
 

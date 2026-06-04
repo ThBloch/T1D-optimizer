@@ -476,3 +476,31 @@ D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sib
 4. E14 (production-path smoke test, ~half day).
 
 **Commits this entry:** `<this-commit>` Log 2026-06-02 (continued) e10-wake-anchor-decision.
+
+## 2026-06-04 e18-wake-time-and-tests
+**Changed:**
+- E18 shipped. `scripts/night_stats.py`: `WAKE_HOUR = 7` (int) -> `WAKE_TIME = time(6, 20)`; `overnight_window` end collapsed to `datetime.combine(..., WAKE_TIME)`; import + docstrings.
+- `scripts/dexcom_fetch.py`: import + 3 sites switched to `WAKE_TIME`; line 72 rewrite to `datetime.combine(yesterday + timedelta(days=1), WAKE_TIME)` also fixes a latent month-end overflow (`day + 1` threw on the 31st); removed hardcoded `Fasting (07:00)` literal.
+- `scripts/strain_binning_analysis.py`: import + report-footer display use `WAKE_TIME`.
+- `docs/architecture.md`: pipeline line `WAKE_HOUR:00` -> `WAKE_TIME` (06:20).
+- `docs/decisions-log.md`: new 2026-06-04 entry (written before code per P10); later corrected its own test-count + the now-false "no test exercises overnight_window()" claim.
+- `tests/test_night_stats.py`: new `TestOvernightWindow` (5 cases) - 06:20 inclusivity, post-wake exclusion, pre-injection exclusion, full-span filter, month-end crossing. Count 24 -> 29.
+- `docs/improvements.md`: E18 marked `[x]`. `CLAUDE.md`: test description + count 24 -> 29.
+
+**Decided:**
+- Single `WAKE_TIME = time(6, 20)` value over two ints or a `wake_end()` helper - directly answers Thomas's "why scattered across 4 places" pushback; no helper (avoid over-engineering a one-line `datetime.combine`).
+- `datetime.combine` rewrite chosen partly because it incidentally fixes the month-end overflow for free.
+- Added `overnight_window()` tests after Thomas challenged coverage: the prior 77 green only proved no breakage, not that the changed function works. The boundary is now pinned from both sides (later wake -> post-wake-exclusion test fails; earlier wake -> inclusivity test fails).
+- Corrected my own uncommitted same-session decisions-log entry rather than ship a known-false statement; left committed past entries (decisions-log 245/264, session-log history) untouched.
+
+**Blocked:**
+- E1b/E1d: gated on Thomas deciding the "skip strain?" question.
+- `dexcom_fetch.py` window-build + its overflow fix remain untested (live-API script, no harness) - deliberate scope gap, flagged not silent.
+
+**Next (when Thomas resumes):**
+1. E19 (bolus disambiguator into `thomas_rules`, ~2-3h) - strict-P8 follow-on.
+2. E20 (`tests/test_inferential_predictor.py`, ~half day) - P9 strict follow-on.
+3. E14 (production-path smoke test, ~half day).
+4. E1c (rule audit + per-rule skip toggles).
+
+**Commits this entry:** `<this-commit>` E18: wake anchor 06:20 + WAKE_TIME consolidation + overnight_window tests.

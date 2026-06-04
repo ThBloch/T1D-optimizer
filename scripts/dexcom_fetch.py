@@ -12,7 +12,7 @@ from rules import thomas_rules
 from dose_diary import load_diary, save_diary, find_row, upsert_row, parse_dose, DIARY_PATH
 from whoop_loader import load_whoop
 from dexcom_loader import load_dexcom
-from night_stats import night_stats, second_half_trend, OVN_START, WAKE_HOUR
+from night_stats import night_stats, second_half_trend, OVN_START, WAKE_TIME
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -69,20 +69,20 @@ def run():
     trend_note = f"  Current: {latest_v} mmol/L at {latest_dt.strftime('%H:%M')} ({latest_dt.date()})"
 
     start  = datetime(yesterday.year, yesterday.month, yesterday.day, OVN_START)
-    end    = datetime(yesterday.year, yesterday.month, yesterday.day + 1, WAKE_HOUR)
+    end    = datetime.combine(yesterday + timedelta(days=1), WAKE_TIME)
     window = [(dt, v) for dt, v in readings if start <= dt <= end]
     stats  = night_stats(window, min_readings=4)
     sh_slope_raw, _, _ = second_half_trend(window)
 
     if stats is None:
-        print(f"\nNot enough readings for overnight window ({yesterday} {OVN_START}:00 -> {today} {WAKE_HOUR}:00).")
+        print(f"\nNot enough readings for overnight window ({yesterday} {OVN_START}:00 -> {today} {WAKE_TIME.strftime('%H:%M')}).")
         print(f"Readings available: {len(readings)} - oldest: {readings[0][0].strftime('%H:%M %d-%m')}")
         print(trend_note)
         return
 
     print(f"\n--- Last night ({yesterday}) ---")
     print(f"  Injection-time glucose : {stats['inj_g']} mmol/L")
-    print(f"  Fasting (07:00)        : {stats['fasting']} mmol/L")
+    print(f"  Fasting ({WAKE_TIME.strftime('%H:%M')})        : {stats['fasting']} mmol/L")
     print(f"  Mean overnight         : {stats['mean']} mmol/L")
     print(f"  Min glucose            : {stats['min_g']} mmol/L")
     sh_slope = round(sh_slope_raw, 3) if sh_slope_raw is not None else ''

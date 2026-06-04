@@ -181,7 +181,7 @@ flags (--new-pen, --no-hypo)  ------>  modifiers                        |
 For every basal injection in Clarity (evening hour filter):
 
 1. `overnight_window(inj_dt, glucose_list)` -> readings from injection
-   through `WAKE_HOUR:00` next day.
+   through `WAKE_TIME` (06:20) next day.
 2. `night_stats(readings)` -> `{n_readings, fasting, mean, min_g, max_g,
    inj_g, tir, tir_full, hypo_pct, hyper_pct, hyper_adj, hypo_events,
    hypo_correction, correction_spike_above_10}`.

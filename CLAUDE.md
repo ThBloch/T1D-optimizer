@@ -46,7 +46,7 @@ output/                   generated reports (not committed)
 
 ## Tests
 - `tests/test_rules.py` — 38 unittest cases for `thomas_rules` (21 hypo/fasting/activity/pen + 17 slope). Run: `py -X utf8 tests/test_rules.py`
-- `tests/test_night_stats.py` — 24 unittest cases for `night_stats()` + `second_half_trend()` (slope direction/magnitude, degenerate/insufficient inputs, hypo-event counting, hypo-correction boundaries, TIR fields). Run: `py -X utf8 tests/test_night_stats.py`
+- `tests/test_night_stats.py` - 29 unittest cases for `night_stats()` + `second_half_trend()` + `overnight_window()` (slope direction/magnitude, degenerate/insufficient inputs, hypo-event counting, hypo-correction boundaries, TIR fields, overnight-window boundary inclusivity at 06:20 + month-end crossing). Run: `py -X utf8 tests/test_night_stats.py`
 - `tests/test_bolus_classification.py` — 15 unittest cases for `filter_primes` (8: boundaries at `PRIME_MAX_U` and `PRIME_WINDOW`, bidirectional lookahead, empty input) and `find_minute_unit_overlaps` (7: empty inputs, exact-minute matches, unit/minute mismatches, second-level skew within same minute, minute-boundary). Run: `py -X utf8 tests/test_bolus_classification.py`
 
 ## Data sources (API-driven)

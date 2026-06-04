@@ -156,9 +156,10 @@ Risks across E5-E9: MFA on Clarity, Dexcom ToS on automated access, UI brittlene
   - Approach: synthetic nights with hand-computable expected M-spec selection (e.g. linear data favouring M1; interaction-driven data favouring M3); ranking output for known signal combinations.
   - Effort ~half day.
 
-- [ ] E18. WAKE_HOUR 7 -> 06:20 (R22 from the 2026-05-28 audit, the last un-shipped redesign item).
-  - `scripts/night_stats.py:14` currently sets `WAKE_HOUR = 7`. Thomas's weekday alarm is 06:20; both the slope rule's overnight window and the fasting fallback end at the `WAKE_HOUR` boundary, so moving to 06:20 shifts both signals and can move suggestions.
-  - Design question resolved 2026-06-02: fixed 06:20 (see E10 wake-up anchor note). This is a one-line change in `night_stats.py`. Needs a decisions-log entry before shipping (rule-affecting change per P10).
+- [x] E18. WAKE_HOUR 7 -> 06:20 (R22 from the 2026-05-28 audit, the last un-shipped redesign item).
+  - `scripts/night_stats.py:14` set `WAKE_HOUR = 7`. Thomas's weekday alarm is 06:20; both the slope rule's overnight window and the fasting fallback end at the wake boundary, so moving to 06:20 shifts both signals and can move suggestions.
+  - Design question resolved 2026-06-02: fixed 06:20 (see E10 wake-up anchor note).
+  - Resolved 2026-06-04: bare int `WAKE_HOUR` promoted to a single `WAKE_TIME = time(6, 20)` value referenced at all 5 derivation sites (consolidation per Thomas's "why scattered" pushback); removed a hardcoded `Fasting (07:00)` literal and fixed a latent month-end overflow in `dexcom_fetch.py`. decisions-log entry 2026-06-04. Added 5 `overnight_window()` boundary tests (test_night_stats 24 -> 29). Tests 82/82 green.
 
 ---
 

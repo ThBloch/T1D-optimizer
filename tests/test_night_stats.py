@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'scripts'))
 
 from night_stats import (
-    night_stats, second_half_trend,
+    overnight_window, night_stats, second_half_trend,
     HYPO_THR, HYPO_CORRECTION_THR,
     CLINICAL_TIR_LO, CLINICAL_TIR_HI,
     TARGET_LO, TARGET_HI,
@@ -205,6 +205,54 @@ class TestNightStats(unittest.TestCase):
         self.assertEqual(CLINICAL_TIR_HI, 10.0)
         self.assertEqual(TARGET_LO, 5.0)
         self.assertEqual(TARGET_HI, 8.0)
+
+
+class TestOvernightWindow(unittest.TestCase):
+    # Window end is WAKE_TIME (06:20) the morning after inj_dt; both bounds
+    # inclusive (inj_dt <= dt <= end). Literal 06:20 here pins the shipped value.
+
+    def test_reading_at_0620_included(self):
+        # Reading at exactly the wake boundary is kept (upper bound inclusive).
+        inj = datetime(2026, 1, 1, 22, 0)
+        window = overnight_window(inj, [(datetime(2026, 1, 2, 6, 20), 6.0)])
+        self.assertEqual([v for _, v in window], [6.0])
+
+    def test_readings_after_0620_excluded(self):
+        # Anything past 06:20 falls outside the window.
+        inj = datetime(2026, 1, 1, 22, 0)
+        readings = [(datetime(2026, 1, 2, 6, 21), 6.0),
+                    (datetime(2026, 1, 2, 6, 25), 6.1)]
+        self.assertEqual(overnight_window(inj, readings), [])
+
+    def test_reading_before_injection_excluded(self):
+        # Pre-injection reading dropped; the injection-time reading itself is kept.
+        inj = datetime(2026, 1, 1, 22, 0)
+        readings = [(datetime(2026, 1, 1, 21, 59), 5.0),
+                    (inj, 5.5)]
+        window = overnight_window(inj, readings)
+        self.assertEqual([v for _, v in window], [5.5])
+
+    def test_full_span_keeps_inclusive_bounds(self):
+        # Both bounds inclusive; one reading before inj and one after 06:20 dropped.
+        inj = datetime(2026, 1, 1, 22, 0)
+        readings = [
+            (datetime(2026, 1, 1, 21, 0), 4.0),   # before inj -> out
+            (inj,                          5.0),   # lower bound -> in
+            (datetime(2026, 1, 2, 2, 0),   6.0),   # mid-window -> in
+            (datetime(2026, 1, 2, 6, 20),  7.0),   # upper bound -> in
+            (datetime(2026, 1, 2, 6, 25),  8.0),   # after wake -> out
+        ]
+        window = overnight_window(inj, readings)
+        self.assertEqual([v for _, v in window], [5.0, 6.0, 7.0])
+
+    def test_month_end_injection_crosses_boundary(self):
+        # inj on Jan 31 22:00 -> end Feb 1 06:20. Must build without error
+        # (guards the month-boundary crossing of the date + timedelta path).
+        inj = datetime(2026, 1, 31, 22, 0)
+        readings = [(datetime(2026, 2, 1, 6, 0),  6.0),    # in
+                    (datetime(2026, 2, 1, 6, 25), 6.1)]    # out
+        window = overnight_window(inj, readings)
+        self.assertEqual([v for _, v in window], [6.0])
 
 
 if __name__ == '__main__':

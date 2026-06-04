@@ -19,7 +19,7 @@ sys.path.insert(0, str(PROJECT_ROOT / 'scripts'))
 
 from dexcom_loader import load_dexcom
 from whoop_loader import load_whoop
-from night_stats import (overnight_window, night_stats, WAKE_HOUR,
+from night_stats import (overnight_window, night_stats, WAKE_TIME,
                          CLINICAL_TIR_LO, CLINICAL_TIR_HI,
                          second_half_trend, SECOND_HALF_FRACTION, SH_MIN_READINGS)
 
@@ -376,7 +376,7 @@ def main():
     w(f'Direction: down = dose too HIGH, up = dose too LOW.')
     w(f'Trend band: flat = |slope| <= {FLAT_BAND} mmol/L/h.')
     w(f'Second-half split: last {int(SECOND_HALF_FRACTION*100)}% of CGM readings '
-      f'between injection and {WAKE_HOUR}:00 wake.')
+      f'between injection and {WAKE_TIME.strftime("%H:%M")} wake.')
 
     text = '\n'.join(lines) + '\n'
     OUT_FILE.write_text(text, encoding='utf-8')
