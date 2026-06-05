@@ -65,7 +65,8 @@ class TestThomasRules(unittest.TestCase):
         dose, _ = thomas_rules(20, 13.0, 0, 14.0)
         self.assertEqual(dose, 21)
 
-    def test_activity_below_threshold_no_effect(self):
+    def test_strain_neutral_band_interior(self):
+        # s1=11.9 is inside the neutral band [11, 13) -> no strain adjustment
         dose, _ = thomas_rules(20, 8.0, 0, 11.9)
         self.assertEqual(dose, 20)
 
@@ -186,10 +187,6 @@ class TestThomasRules(unittest.TestCase):
         self.assertEqual(dose, 21)
         self.assertTrue(any('fallback' in r for r in reasoning))
 
-    def test_slope_and_fasting_both_none_no_glucose_adj(self):
-        dose, _ = thomas_rules(20, None, 0, 12.0)
-        self.assertEqual(dose, 20)
-
     def test_custom_slope_thresholds(self):
         # Override slope_flat to 0.2; slope of 0.25 now triggers +1u
         dose, _ = thomas_rules(20, None, 0, 12.0, sh_slope=0.25, slope_flat=0.2)
@@ -218,6 +215,18 @@ class TestThomasRules(unittest.TestCase):
         dose, reasoning = thomas_rules(20, None, 0, 12.0)
         self.assertEqual(dose, 20)
         self.assertTrue(any('neutral' in r for r in reasoning))
+
+    def test_strain_tier_t3_boundary_neutral(self):
+        # s1=11 is NOT < 11, so falls to neutral band [11, 13) -> 0u, not +1u
+        dose, reasoning = thomas_rules(20, None, 0, 11.0)
+        self.assertEqual(dose, 20)
+        self.assertTrue(any('neutral' in r for r in reasoning))
+
+    def test_strain_tier_t4_boundary_minus1(self):
+        # s1=13 is NOT < 13, so falls to tier [13, 15) -> -1u, not neutral
+        dose, reasoning = thomas_rules(20, None, 0, 13.0)
+        self.assertEqual(dose, 19)
+        self.assertTrue(any('-1u' in r for r in reasoning))
 
     def test_strain_tier_minus1(self):
         dose, reasoning = thomas_rules(20, None, 0, 14.0)
