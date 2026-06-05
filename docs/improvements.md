@@ -88,12 +88,14 @@ Read this before proposing new refactors.
 - [ ] E6. Phase 2: Telegram bot (~3-4h) - `python-telegram-bot` on Hetzner Frankfurt (EU/GDPR) or Raspberry Pi. Commands: `/today`, `/took N`, `/stats`. (blocked by: E5) (blocks: E7)
 - [ ] E7. Phase 3: nightly proactive push (~30m) - cron 21:30 -> bot DMs tonight's suggestion. (blocked by: E6)
   - Soft dep: needs fresh Clarity data. Either E8 or manual re-export.
-- [ ] E8. Phase 4 (optional): Playwright Clarity CSV export (~2-4h) - gnarly; cached `storage_state`, monthly MFA refresh. Solves the manual-export blocker for true end-to-end.
-- [ ] E9. Phase 5 (optional): web dashboard for history graphs.
+- [ ] E8. Phase 4: Dexcom Developer API v3 for insulin events - OAuth app (developer.dexcom.com), `/events` endpoint (longActing=basal, fastActing=bolus), incremental fetch to `data/dexcom_api/events.json`. Replaces manual Clarity CSV export as the authoritative insulin source; Clarity CSVs become historical fallback for older dates the API may not reach. Gate: probe script (`scripts/dexcom_api_probe.py`) must confirm G7 event history depth + long/short-acting field split vs Clarity on overlapping dates. Limited Access DLA (Dexcom approval required, unknown review time) gates production data. Token storage at `~/.dexcom_api/`. See decisions-log 2026-06-05.
+  - Note: Playwright approach abandoned 2026-06-05 (Akamai bot protection - see decisions-log).
+  - `scripts/clarity_coverage.py` kept as glucose-gap utility + semi-manual fallback driver.
+- [-] E8b. Phase 4b: Playwright Glooko bolus export - parked. Revisit after E8 probe determines what the Dexcom Developer API actually serves; may be redundant or may reveal a gap.
 
-End goal: phone-triggered nightly suggestion. Hard blocker for true end-to-end: Dexcom Share API has no insulin events; Clarity export is manual. E8 solves it via browser automation OR user accepts periodic manual re-export.
+End goal: phone-triggered nightly suggestion. Hard blocker for true end-to-end: Dexcom Share API has no insulin events. E8 solves it via the official Developer API (preferred) or semi-manual Clarity re-export (fallback).
 
-Risks across E5-E9: MFA on Clarity, Dexcom ToS on automated access, UI brittleness, server uptime, Telegram chat-id whitelist.
+Risks across E5-E8: Dexcom Limited Access approval time, DLA terms, API data retention depth, Telegram chat-id whitelist.
 
 - [ ] E10. Nighttime objective spec: flat curve, weighted toward wake-up (logged 2026-05-21, not yet scoped to a phase)
   - Goal hierarchy (priority order):

@@ -3,6 +3,7 @@ data/
 
 # Credentials — never commit
 dexcom_creds.json
+dexcom_api_creds.json
 
 # Python cache
 __pycache__/
