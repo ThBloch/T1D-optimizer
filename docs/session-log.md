@@ -577,3 +577,29 @@ D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sib
 **Commits this entry:** `71773b5` test_rules: fix duplicates, rename misleading test, add T3/T4 boundaries | `<this-commit>` Log session.
 
 **Commits this entry:** `<this-commit>` E1 Phase B: 6-tier strain rule encoding.
+
+## 2026-06-05 (continued) e19-e14-bolus-disambiguator-and-smoke-test
+
+**Changed:**
+- `scripts/rules.py` - added `bolus_in_second_half` parameter to `thomas_rules()`; falling slope suppressed (warning added to reasoning) when bolus present in 2nd half
+- `scripts/dexcom_fetch.py` - loads bolus events via `load_bolus_combined()`, filters to overnight second half, passes to `thomas_rules()`; `run()` refactored to accept optional args list (`def run(args=None)`) for testability
+- `tests/test_rules.py` - 4 new bolus disambiguator cases; 49 tests total
+- `tests/test_dexcom_fetch.py` - new file; 3 fixture-based smoke tests for the end-to-end production path (no live API, no real data)
+- `docs/decisions-log.md` - two new 2026-06-05 entries (E19 bolus disambiguator; E14 smoke test approach)
+- `docs/improvements.md` - E19 and E14 marked done
+
+**Decided:**
+- E19: flag-in-reasoning chosen over refuse-to-suggest (bolus data IS available, unlike E12 strain case; skipping slope reduction is the safe default when cause is ambiguous)
+- E14: patch `dose_diary.DIARY_PATH` to redirect reads/writes; `pydexcom` import is inside `fetch_readings()` so `import dexcom_fetch` is safe without the package installed
+- `run(args=None)` refactor: standard argparse pattern; `parse_args(None)` reads sys.argv unchanged; existing live usage unaffected
+
+**Blocked:**
+- E1b/E1d: gated on Thomas deciding the "skip strain?" question.
+- Dexcom Limited Access approval (E8 Phase 2): submitted 2026-06-05, review time unknown.
+
+**Next (when Thomas resumes):**
+1. E20 (`tests/test_inferential_predictor.py`, ~half day) - P9 strict follow-on.
+2. E1c (rule audit + per-rule skip toggles) - conversation-heavy; resolves threshold ownership.
+3. E1b/E1d (friendly `/dose` strain prompting) - once "skip strain?" question answered.
+
+**Commits this entry:** `<this-commit>` E19 + E14: bolus disambiguator + production-path smoke test.

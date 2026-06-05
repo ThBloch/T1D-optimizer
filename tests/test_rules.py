@@ -240,5 +240,34 @@ class TestThomasRules(unittest.TestCase):
         self.assertTrue(any('-2u' in r for r in reasoning))
 
 
+    # ── BOLUS DISAMBIGUATOR ──────────────────────────────────────────────────
+
+    def test_bolus_in_sh_suppresses_minus2(self):
+        from datetime import datetime as dt
+        bolus = [(dt(2026, 1, 1, 3, 0), 2.0)]
+        dose, reasoning = thomas_rules(20, None, 0, 12.0, sh_slope=-1.5, bolus_in_second_half=bolus)
+        self.assertEqual(dose, 20)
+        self.assertTrue(any('ambiguous' in r for r in reasoning))
+
+    def test_bolus_in_sh_suppresses_minus1(self):
+        from datetime import datetime as dt
+        bolus = [(dt(2026, 1, 1, 3, 0), 2.0)]
+        dose, reasoning = thomas_rules(20, None, 0, 12.0, sh_slope=-0.5, bolus_in_second_half=bolus)
+        self.assertEqual(dose, 20)
+        self.assertTrue(any('ambiguous' in r for r in reasoning))
+
+    def test_no_bolus_applies_reduction(self):
+        dose, reasoning = thomas_rules(20, None, 0, 12.0, sh_slope=-1.5, bolus_in_second_half=[])
+        self.assertEqual(dose, 18)
+        self.assertTrue(any('-2u' in r for r in reasoning))
+
+    def test_bolus_does_not_suppress_positive_slope(self):
+        from datetime import datetime as dt
+        bolus = [(dt(2026, 1, 1, 3, 0), 2.0)]
+        dose, reasoning = thomas_rules(20, None, 0, 12.0, sh_slope=1.5, bolus_in_second_half=bolus)
+        self.assertEqual(dose, 23)
+        self.assertTrue(any('+3u' in r for r in reasoning))
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

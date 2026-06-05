@@ -11,8 +11,8 @@ from pathlib import Path
 from rules import thomas_rules
 from dose_diary import load_diary, save_diary, find_row, upsert_row, parse_dose, DIARY_PATH
 from whoop_loader import load_whoop
-from dexcom_loader import load_dexcom
-from night_stats import night_stats, second_half_trend, OVN_START, WAKE_TIME
+from dexcom_loader import load_dexcom, load_bolus_combined
+from night_stats import night_stats, second_half_trend, OVN_START, WAKE_TIME, SECOND_HALF_FRACTION
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -45,13 +45,13 @@ def fetch_readings(username, password):
                   key=lambda x: x[0])
 
 # ── MAIN ──────────────────────────────────────────────────────────────────────
-def run():
+def run(args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--dose', type=float, default=None)
     parser.add_argument('--strain', type=float, default=None)
     parser.add_argument('--new-pen', action='store_true')
     parser.add_argument('--no-hypo', action='store_true')
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     today     = date.today()
     yesterday = today - timedelta(days=1)
@@ -73,6 +73,14 @@ def run():
     window = [(dt, v) for dt, v in readings if start <= dt <= end]
     stats  = night_stats(window, min_readings=4)
     sh_slope_raw, _, _ = second_half_trend(window)
+
+    all_bolus = load_bolus_combined()
+    if len(window) >= 2:
+        split    = int(len(window) * SECOND_HALF_FRACTION)
+        sh_start = window[split][0]
+        bolus_in_sh = [(dt, u) for dt, u in all_bolus if sh_start <= dt <= end]
+    else:
+        bolus_in_sh = []
 
     if stats is None:
         print(f"\nNot enough readings for overnight window ({yesterday} {OVN_START}:00 -> {today} {WAKE_TIME.strftime('%H:%M')}).")
@@ -173,6 +181,7 @@ def run():
         s1=today_strain,
         new_pen=new_pen,
         sh_slope=sh_slope_raw,
+        bolus_in_second_half=bolus_in_sh,
     )
     if no_hypo and stats['hypo_events'] > 0:
         reasoning.insert(0, f"Hypo override: ignoring {stats['hypo_events']} CGM-detected hypo(s) (sensor noise)")

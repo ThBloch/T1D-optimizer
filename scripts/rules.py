@@ -27,7 +27,7 @@ DOSE_MAX = 29
 
 
 def thomas_rules(yesterday_dose, fasting, hypo_events, s1, new_pen=False,
-                 sh_slope=None,
+                 sh_slope=None, bolus_in_second_half=None,
                  slope_flat=SLOPE_FLAT, slope_mid=SLOPE_MID, slope_hi=SLOPE_HI,
                  fasting_lo=FASTING_LO, fasting_mid=FASTING_MID, fasting_hi=FASTING_HI):
     """Return (suggested_dose, reasoning_lines).
@@ -63,11 +63,23 @@ def thomas_rules(yesterday_dose, fasting, hypo_events, s1, new_pen=False,
             adj_glucose = +1
             reasoning.append(f'Slope {sh_slope:+.2f} > {slope_flat} -> +1u')
         elif sh_slope < -slope_hi:
-            adj_glucose = -2
-            reasoning.append(f'Slope {sh_slope:+.2f} < {-slope_hi} -> -2u')
+            if bolus_in_second_half:
+                reasoning.append(
+                    f'Slope {sh_slope:+.2f} < {-slope_hi} but bolus in 2nd half'
+                    f' ({len(bolus_in_second_half)} event(s)) -> slope ambiguous, no reduction'
+                )
+            else:
+                adj_glucose = -2
+                reasoning.append(f'Slope {sh_slope:+.2f} < {-slope_hi} -> -2u')
         elif sh_slope < -slope_flat:
-            adj_glucose = -1
-            reasoning.append(f'Slope {sh_slope:+.2f} < {-slope_flat} -> -1u')
+            if bolus_in_second_half:
+                reasoning.append(
+                    f'Slope {sh_slope:+.2f} < {-slope_flat} but bolus in 2nd half'
+                    f' ({len(bolus_in_second_half)} event(s)) -> slope ambiguous, no reduction'
+                )
+            else:
+                adj_glucose = -1
+                reasoning.append(f'Slope {sh_slope:+.2f} < {-slope_flat} -> -1u')
         else:
             reasoning.append(f'Slope {sh_slope:+.2f} in flat band -> no adjustment')
     elif fasting is not None:

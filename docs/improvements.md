@@ -135,7 +135,7 @@ Risks across E5-E8: Dexcom Limited Access approval time, DLA terms, API data ret
 
 - [x] E13. Hookify reality-check. Resolved 2026-05-30: global standalone hooks in `D:\claude-config\.claude\settings.json` (`creds-commit-guard.py`, `session-end-checks.py`, `session-start-inject.py`) now fire for t1d scripts regardless of launch dir. Local hookify rules were cwd-bound and never fired from the workspace root; pre-existing bug found (`hookify.run-tests-reminder.local.md` had wrong `name:` field). All three local rules set to `enabled: false` (superseded by global hooks).
 
-- [ ] E14. Production-path smoke test (integration test for `dexcom_fetch.py` end-to-end).
+- [x] E14. Production-path smoke test (integration test for `dexcom_fetch.py` end-to-end). Shipped 2026-06-05: `tests/test_dexcom_fetch.py` (3 smoke tests); `run()` refactored to accept optional args list.
   - 38 unit tests cover `thomas_rules` (pure function). Zero integration tests cover the production path: Dexcom fetch -> `night_stats` -> rules -> diary upsert. Regression in any signature or import is undetected until `/dose` is run live.
   - Approach: fixture-based smoke under `tests/fixtures/` - synthetic CGM + WHOOP + Clarity snapshot (no real medical data) -> assert produced suggestion + diary delta. Stub Dexcom Share API or skip live fetch.
   - Effort: ~half a day to set up fixtures; ongoing cost low.
@@ -146,7 +146,7 @@ Risks across E5-E8: Dexcom Limited Access approval time, DLA terms, API data ret
 
 - [x] E17. `night_stats.second_half_trend()` edge-case behaviour + direct tests. Resolved 2026-05-29: `second_half_trend()` now returns `(None, None, sh_n)` when the regression denominator is 0 (previously returned `0.0` silently). New file `tests/test_night_stats.py` adds 24 direct unit cases covering slope direction/magnitude, degenerate inputs, hypo-event counting, hypo-correction boundaries, and TIR fields. See decisions-log 2026-05-29.
 
-- [ ] E19. Bolus disambiguator integration into the production rule (P8 strict follow-on, added 2026-05-29).
+- [x] E19. Bolus disambiguator integration into the production rule (P8 strict follow-on, added 2026-05-29). Shipped 2026-06-05: `thomas_rules()` accepts `bolus_in_second_half`; falling slope suppressed (with warning) when bolus present in 2nd half; `dexcom_fetch.py` loads and filters bolus events; 4 new tests.
   - `dexcom_fetch.py` does not currently consult bolus events when interpreting `sh_slope`. A falling slope produces "basal too high" reasoning even when a mid-night correction bolus was taken; the rule cannot distinguish the two cases without the disambiguator.
   - Approach (E12-pattern): pull bolus events in the overnight window via `dexcom_loader.load_bolus_combined()`, pass them to `thomas_rules` (or a wrapper), and either refuse-to-suggest OR flag ambiguity in the reasoning line when `sh_slope < 0` AND bolus events overlap the second half. Decision on refuse-vs-flag deferred to implementation; lean: flag in reasoning (less invasive than E12's strain refusal because the data IS available, just contextually).
   - Tests: extend `tests/test_rules.py` with cases for bolus-in-window / bolus-out-of-window / no-bolus.
