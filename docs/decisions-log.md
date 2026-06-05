@@ -286,3 +286,20 @@ Impact: the change lives in `overnight_window()`, so it propagates to every hist
 **Status:** accepted
 **Decision:** The Playwright browser-automation approach for Clarity CSV export (E8, original plan) is abandoned. New direction: the official Dexcom Developer API v3 `/events` endpoint over OAuth 2.0 (app registered at developer.dexcom.com). This is a different API from the Share API (`pydexcom`, glucose-only) already in use. The Developer API carries insulin events logged in the G7 app (`longActing` = basal, `fastActing` = bolus) - the same source as Clarity's Hurtig rows. Implementation plan: probe script first (validation gate with sandbox then production data), then `dexcom_events_fetch.py` + `dexcom_events_loader.py` once the probe confirms G7 event history depth and the long/short-acting field split. API is the authoritative source for dates it serves; Clarity CSVs become the fallback for older history it may not reach. `clarity_coverage.py` is kept as a glucose-gap utility and semi-manual fallback driver. Token storage mirrors WHOOP: `~/.dexcom_api/`. `requests` (no SDK). EU host: `api.dexcom.eu` (confirm at app registration). Limited Access tier (up to 5 users, requires Dexcom DLA signature + approval) gates production access - sandbox-first development while the application is in review. E8b (Glooko bolus automation) parked until the probe clarifies what the API actually serves.
 **Why:** Clarity sits behind Akamai-grade bot protection (TLS fingerprinting, injected JS challenges, CDP detection) that standard Playwright/Selenium cannot reliably bypass - confirmed 2026-06-05. The stealth-patch ecosystem is unmaintainable. The sanctioned Developer API is the correct long-term path: same data source (G7-app-logged insulin), OAuth-based (mirrors the WHOOP pattern already in place), no ToS exposure, no fragile DOM selectors. The medical data context makes reliability a hard requirement, not a nice-to-have.
+
+## 2026-06-05 - 6-tier strain adjustment replaces 2-tier activity rule (E1 Phase B)
+**Status:** accepted
+**Decision:** The coarse 2-tier strain rule (`s1 >= 12 -> -2u`, else `0u`) is replaced with a 6-tier chain. Boundaries and adjustments:
+
+| adj | s1 range     |
+|-----|--------------|
+| +3  | s1 < 6       |
+| +2  | 6 <= s1 < 9  |
+| +1  | 9 <= s1 < 11 |
+|  0  | 11 <= s1 < 13|
+| -1  | 13 <= s1 < 15|
+| -2  | s1 >= 15     |
+
+`ACTIVITY_THR` constant removed; replaced by `STRAIN_T1..T5` (cutoffs 6, 9, 11, 13, 15). The `activity_threshold` function parameter removed from `thomas_rules()` signature (no callers used it). The variable previously named `adj_activity` retains its name (stacks with glucose adj and new-pen adj as before).
+
+**Why:** The 2-tier rule was a placeholder. Phase A binning analysis (`strain_binning_analysis.py`, 2026-05-27) ran on 256 historical nights and measured second-half glucose slope per strain bin. Results: low strain bins show rising slopes (under-dose signal), high strain bins show falling slopes (over-dose signal). Phase A2 OLS regression confirmed direction: b_strain = -0.054 mmol/L/h per strain unit, p=0.001. The 6-tier table is anchored to observed slope transitions in the binning output. Known limitations: (a) s1 < 6 bin has n=12 nights (thin evidence); (b) dose coefficient is weak (p=0.43) due to narrow historical dose range (mostly 17-19u), so +1/+2/+3 magnitudes carry uncertainty; (c) the 13-15 bin (-1u) showed a flat slope in the data rather than sensitivity - adopted as a granularity improvement over the old -2u at s1 >= 12. Threshold boundaries are judgment-anchored, not statistically optimized. Plan: treat as a starting point and calibrate from live performance.

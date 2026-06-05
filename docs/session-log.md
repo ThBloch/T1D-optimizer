@@ -533,3 +533,27 @@ D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sib
 2. While waiting: E1 strain rule Phase B (threshold table ready, encoding pending sign-off), E6 Telegram bot, or E10 nighttime objective spec.
 
 **Commits this entry:** `15c1bbc` E8 pivot: Dexcom Developer API v3 replaces Playwright Clarity export
+
+## 2026-06-05 (continued) e1-strain-6tier-encoding
+
+**Changed:**
+- `scripts/rules.py` - replaced 2-tier strain rule (ACTIVITY_THR=12 -> -2u) with 6-tier chain (STRAIN_T1..T5 = 6/9/11/13/15); removed `activity_threshold` function parameter
+- `tests/test_rules.py` - 6 new tier boundary tests; 3 existing stacking tests updated for new rule math (s1=14 now -1u not -2u); old "no strain" baseline changed from s1=5.0 to s1=12.0 (neutral band) throughout; 44 tests, all green
+- `docs/decisions-log.md` - new 2026-06-05 entry (6-tier encoding, Phase A evidence, known limitations)
+- `docs/improvements.md` - E1 marked done
+
+**Decided:**
+- 6-tier table encoded as-is from Phase A binning analysis (2026-05-27). Boundaries (6/9/11/13/15) are judgment-anchored to observed slope transitions, not statistically optimized. Plan to calibrate from live performance.
+- Old s1=5.0 test baseline was silently "no effect" under 2-tier rule. Changed to s1=12.0 (neutral band) to preserve intent under the new rule.
+
+**Blocked:**
+- E1b/E1d: gated on Thomas deciding the "skip strain?" question.
+- Dexcom Limited Access approval (E8 Phase 2): submitted 2026-06-05, review time unknown.
+
+**Next (when Thomas resumes):**
+1. E19 (bolus disambiguator into `thomas_rules`, ~2-3h) - strict-P8 follow-on.
+2. E20 (`tests/test_inferential_predictor.py`, ~half day) - P9 strict follow-on.
+3. E14 (production-path smoke test, ~half day).
+4. E1c (rule audit + per-rule skip toggles) - once live data reveals calibration needs.
+
+**Commits this entry:** `<this-commit>` E1 Phase B: 6-tier strain rule encoding.

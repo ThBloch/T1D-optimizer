@@ -28,7 +28,7 @@ Read this before proposing new refactors.
 
 ## E. Pending work
 
-- [ ] E1. Refine strain-based rule - currently coarse (`s1 >= 12.0 -> -2u`, else 0u; two of six possible levels).
+- [x] E1. Refine strain-based rule - 6-tier encoding shipped 2026-06-05 (STRAIN_T1..T5 in rules.py; 6 new test cases; decisions-log entry). Boundaries are data-anchored from Phase A binning but carry uncertainty; plan to calibrate from live performance.
   - Wanted: granular `+3, +2, +1, 0, -1, -2`. Define s1 thresholds per level.
   - Clinical direction: low strain -> higher insulin resistance (+adj), high strain -> higher insulin sensitivity (-adj). Confirm with Thomas before encoding.
   - Approach: bin historical nights by s1, look at TIR / fasting outcomes per dose, infer thresholds, encode in `rules.py`, add ~6 unittest cases, document in `decisions-log.md`.
