@@ -556,4 +556,24 @@ D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sib
 3. E14 (production-path smoke test, ~half day).
 4. E1c (rule audit + per-rule skip toggles) - once live data reveals calibration needs.
 
+## 2026-06-05 (continued) test-rules-cleanup
+
+**Changed:**
+- `tests/test_rules.py` - dropped duplicate test; renamed misleading test (`test_activity_below_threshold_no_effect` -> `test_strain_neutral_band_interior`); added T3 boundary (s1=11 -> neutral not +1u) and T4 boundary (s1=13 -> -1u not neutral); 45 tests total [`71773b5`]
+
+**Decided:**
+- Old s1=12 "threshold" concept is gone; tests referencing it by name were misleading.
+- Two missing boundary cases (T3, T4) identified and added after evaluating all 44 tests for continued relevance post-6-tier encoding.
+
+**Blocked:**
+- E1b/E1d: gated on Thomas deciding the "skip strain?" question.
+- Dexcom Limited Access approval (E8 Phase 2): submitted 2026-06-05, review time unknown.
+
+**Next (when Thomas resumes):**
+1. E19 (bolus disambiguator into `thomas_rules`, ~2-3h) - strict-P8 follow-on.
+2. E20 (`tests/test_inferential_predictor.py`, ~half day) - P9 strict follow-on.
+3. E14 (production-path smoke test, ~half day).
+
+**Commits this entry:** `71773b5` test_rules: fix duplicates, rename misleading test, add T3/T4 boundaries | `<this-commit>` Log session.
+
 **Commits this entry:** `<this-commit>` E1 Phase B: 6-tier strain rule encoding.
