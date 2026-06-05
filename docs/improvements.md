@@ -152,7 +152,7 @@ Risks across E5-E8: Dexcom Limited Access approval time, DLA terms, API data ret
   - Tests: extend `tests/test_rules.py` with cases for bolus-in-window / bolus-out-of-window / no-bolus.
   - Effort ~2-3 hours.
 
-- [ ] E20. `tests/test_inferential_predictor.py` (P9 strict follow-on, added 2026-05-29).
+- [x] E20. `tests/test_inferential_predictor.py` (P9 strict follow-on, added 2026-05-29). Resolved 2026-06-05: 11 tests covering spearman_np, multi_residuals, f_test_nested; main() excluded (loads real data).
   - `scripts/inferential_predictor.py` shaped the Phase 6 slope rule via M3 selection (decisions-log 2026-05-29). Per P9 it is a required test file but does not exist yet.
   - Coverage targets: nested-model F-test logic (`fit_ols`-based comparison + `beta_dose` significance gate), signal-ranking output (direct + partial + inferential Spearman, convergence tiering), inferred-optimal-dose computation per night for the selected M-spec.
   - Approach: synthetic nights with hand-computable expected M-spec selection (e.g. linear data favouring M1; interaction-driven data favouring M3); ranking output for known signal combinations.

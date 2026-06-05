@@ -603,3 +603,23 @@ D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sib
 3. E1b/E1d (friendly `/dose` strain prompting) - once "skip strain?" question answered.
 
 **Commits this entry:** `<this-commit>` E19 + E14: bolus disambiguator + production-path smoke test.
+
+## 2026-06-05 (continued) e20-inferential-predictor-tests
+
+**Changed:**
+- `tests/test_inferential_predictor.py` (new) - 11 unit tests for `spearman_np`, `multi_residuals`, `f_test_nested`; `main()` excluded (loads real data files)
+- `docs/improvements.md` - E20 marked done
+
+**Decided:**
+- Scope E20 to the three pure utility functions only; `main()` cannot be unit-tested without live data; original backlog description was overly ambitious
+- 11 tests (4 more than planned) to cover degenerate/boundary cases and OLS invariants
+
+**Blocked:**
+- Nothing.
+
+**Next (when Thomas resumes):**
+1. E1b/E1d: Friendly `/dose` strain prompting - BLOCKED on decision: what happens when user cannot provide strain (skip or refuse)?
+2. E8 Phase 2: Dexcom Limited Access approval pending; when approved, switch base_url to api.dexcom.eu and re-run probe
+3. E1c: Rule audit + per-rule skip toggles (conversation-heavy, no estimate)
+
+**Commits this entry:** `<this-commit>`.
