@@ -504,3 +504,32 @@ D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sib
 4. E1c (rule audit + per-rule skip toggles).
 
 **Commits this entry:** `<this-commit>` E18: wake anchor 06:20 + WAKE_TIME consolidation + overnight_window tests.
+
+## 2026-06-05 e8-dexcom-api-pivot
+
+**Changed:**
+- `docs/decisions-log.md`: added E8 pivot entry (Playwright dropped; Dexcom Developer API v3 adopted) [`15c1bbc`]
+- `docs/improvements.md`: E8 rewritten to API approach; E8b parked `[-]` [`15c1bbc`]
+- `docs/dexcom-api-setup.md`: new - one-time setup guide (register app, creds file, probe run, go/no-go criteria) [`15c1bbc`]
+- `scripts/dexcom_api_probe.py`: new - OAuth auth-code flow, `/events` query, insulin subtype display, token cache at `~/.dexcom_api/` [`15c1bbc`]
+- `scripts/clarity_coverage.py`: new - glucose-gap utility + semi-manual fallback driver [`15c1bbc`]
+- `tests/test_clarity_coverage.py`: new - 13 tests, all green [`15c1bbc`]
+- `.gitignore`: `dexcom_api_creds.json` added [`15c1bbc`]
+
+**Decided:**
+- Playwright Clarity export abandoned (Akamai bot protection unwinnable). Official Dexcom Developer API v3 `/events` adopted as insulin source.
+- API = authoritative source; Clarity CSVs = historical fallback for older dates.
+- Token storage at `~/.dexcom_api/` (mirrors WHOOP pattern). Hand-rolled with `requests` (no SDK).
+- E8b (Glooko bolus automation) parked until production probe clarifies what the API actually serves.
+- Sandbox probe confirmed: OAuth flow works, field schema correct (`eventType=insulin`, `eventSubType=fastActing`/`longActing`, `value` is string, `recordId` for dedup, `transmitterGeneration=g7`).
+- `value` field is a string - loader must cast with `float(r['value'])`.
+- Limited Access (Individual) application submitted to Dexcom - unknown review time, this is the long pole for production data.
+
+**Blocked:**
+- Phase 2 (production probe) blocked on Dexcom Limited Access approval (submitted 2026-06-05, review time unknown).
+
+**Next (when Thomas resumes):**
+1. When Dexcom approves Limited Access: switch `base_url` in `dexcom_api_creds.json` to `https://api.dexcom.eu`, re-run probe, run Phase 4 go/no-go cross-check vs Clarity.
+2. While waiting: E1 strain rule Phase B (threshold table ready, encoding pending sign-off), E6 Telegram bot, or E10 nighttime objective spec.
+
+**Commits this entry:** `15c1bbc` E8 pivot: Dexcom Developer API v3 replaces Playwright Clarity export
