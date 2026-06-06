@@ -130,27 +130,16 @@ def run(args=None):
             yesterday_dose = diary_dose
             dose_source = 'diary'
 
-    # Priority 3: --dose flag or interactive prompt (first run, no record anywhere)
+    # Priority 3: --dose flag (first run, no record anywhere)
     if yesterday_dose is None:
         if args.dose is not None:
             yesterday_dose = args.dose
             find_row(diary, yesterday)['dose_u'] = yesterday_dose
             dose_source = 'flag'
         else:
-            print()
-            try:
-                dose_str = input(f"Dose injected on {yesterday} (u): ").strip()
-            except EOFError:
-                print("Non-interactive run, no anchor dose on file -- skipping suggestion.")
-                save_diary(diary)
-                return
-            yesterday_dose = parse_dose(dose_str)
-            if yesterday_dose is None:
-                print("Invalid input. Diary saved without anchor; suggestion skipped.")
-                save_diary(diary)
-                return
-            find_row(diary, yesterday)['dose_u'] = yesterday_dose
-            dose_source = 'manual'
+            print("NEEDS: dose")
+            save_diary(diary)
+            return
 
     if args.strain is not None:
         today_strain = args.strain

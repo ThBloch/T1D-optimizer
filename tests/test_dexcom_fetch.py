@@ -90,6 +90,29 @@ class TestDexcomFetchSmoke(unittest.TestCase):
         self.assertIn('NEEDS: strain', out)
         self.assertNotIn("Tonight's suggestion", out)
 
+    def test_needs_dose_emitted_when_no_anchor(self):
+        buf = io.StringIO()
+        fd, tmp_name = tempfile.mkstemp(suffix='.csv')
+        os.close(fd)
+        tmp = Path(tmp_name)
+        tmp.unlink()
+        try:
+            with (
+                patch.object(dexcom_fetch, 'load_creds', return_value=_DUMMY_CREDS),
+                patch.object(dexcom_fetch, 'fetch_readings', return_value=_cgm_flat()),
+                patch.object(dexcom_fetch, 'load_dexcom', side_effect=FileNotFoundError),
+                patch.object(dexcom_fetch, 'load_bolus_combined', return_value=[]),
+                patch.object(dexcom_fetch, 'load_whoop', return_value=_WHOOP_NORMAL),
+                patch.object(dose_diary, 'DIARY_PATH', tmp),
+                patch('sys.stdout', buf),
+            ):
+                dexcom_fetch.run([])  # no --dose flag, no Clarity, empty diary
+        finally:
+            tmp.unlink(missing_ok=True)
+        out = buf.getvalue()
+        self.assertIn('NEEDS: dose', out)
+        self.assertNotIn("Tonight's suggestion", out)
+
     def test_bolus_ambiguity_flagged_for_falling_slope(self):
         readings = _cgm_falling_second_half()
         # Place a bolus event in the second half of the overnight window

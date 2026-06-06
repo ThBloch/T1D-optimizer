@@ -34,7 +34,7 @@ Read this before proposing new refactors.
   - Approach: bin historical nights by s1, look at TIR / fasting outcomes per dose, infer thresholds, encode in `rules.py`, add ~6 unittest cases, document in `decisions-log.md`.
   - Status 2026-05-27: Phase A + A2 analysis done (scripts/strain_binning_analysis.py, scripts/strain_regression_analysis.py). Threshold table proposed; encoding gated on Thomas sign-off. See session-log.md 2026-05-27 entry.
   - Hard requirement (Thomas, 2026-05-27): strain MUST be part of every dose suggestion. The current rule silently skips the strain block when `s1 is None`; this is unacceptable. -> see E1b, now elevated.
-- [ ] E1b. Always provide a usable s1 at dose time. **Elevated 2026-05-27; design corrected 2026-05-28.**
+- [x] E1b. Always provide a usable s1 at dose time. **Elevated 2026-05-27; design corrected 2026-05-28.** Resolved 2026-06-06: `dexcom_fetch.py` Priority-3 `input()` dose prompt replaced with `print("NEEDS: dose")` + return; `/dose` step 3 updated to parse `NEEDS: dose` trigger.
   - Problem: `scripts/whoop_loader.py:18-23` indexes the in-progress cycle under its start date, so `whoop.get(today)` returns `None` at evening dose-suggestion time. `dexcom_fetch.py:177-182` then silently skips the strain branch. Thomas does not see a strain reasoning line, and the dose has no activity adjustment.
   - **Generalized scope (2026-05-28):** The same bug class affects `/dose` step 1 - it asks for yesterday's dose upfront, but `dexcom_fetch.py` already auto-resolves yesterday's dose from Clarity CSV then diary on most nights. Fix both in one pass: the script signals what it could not auto-resolve via structured stdout lines; the slash command asks only for the missing items.
   - **Strain resolution - exactly two valid paths:**
@@ -49,7 +49,7 @@ Read this before proposing new refactors.
     2. `dexcom_fetch.py`: add `--strain N` flag, mirror of `--dose N`. Flag overrides the cache lookup.
     3. `.claude/commands/dose.md`: remove step 1 (upfront dose question). New flow: run script with no flags -> parse stdout for `NEEDS:` lines -> ask only for those using prompts from E1d -> re-run with `--dose N` / `--strain N` flags.
   - **Acceptance:** `/dose` only asks for inputs the script cannot resolve. `dexcom_fetch.py` never silently skips strain - emits `NEEDS: strain` when unavailable. Script never blocks on `input()` in non-interactive mode.
-- [ ] E1d. Document the manual-fallback prompt steps for `/dose`. **Gates E1b implementation.**
+- [x] E1d. Document the manual-fallback prompt steps for `/dose`. **Gates E1b implementation.** Resolved 2026-06-06: prompts, validation rules, and order-of-asks written inline in `.claude/commands/dose.md` steps 3-4. Strain: "WHOOP strain for today (check app):", float, warn if outside 0-21. Dose: "What dose did you take last night? (units)", positive number. Order: dose before strain.
   - When the script signals `NEEDS: <name>`, `/dose` must ask using a documented prompt. This item specifies those prompts.
   - Open questions to resolve before writing the spec:
     - **Wording:** e.g. "What was today's WHOOP strain (0-21)?" - or alternative framing? Include hint about expected range?

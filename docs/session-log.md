@@ -623,3 +623,29 @@ D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sib
 3. E1c: Rule audit + per-rule skip toggles (conversation-heavy, no estimate)
 
 **Commits this entry:** `<this-commit>`.
+
+## 2026-06-06 e1b-e1d-needs-line-protocol
+
+**Changed:**
+- `scripts/dexcom_fetch.py`: Priority-3 dose `input()` block replaced with `print("NEEDS: dose")` + return. Script is now fully non-interactive.
+- `.claude/commands/dose.md`: step 3 trigger updated from `no anchor dose on file` to `NEEDS: dose`; step 4 strain prompt updated to "WHOOP strain for today (check app):" with float validation and out-of-range warning spec.
+- `tests/test_dexcom_fetch.py`: 1 new smoke test (`test_needs_dose_emitted_when_no_anchor`); 4 smoke tests total, all green.
+- `docs/improvements.md`: E1b and E1d marked done.
+- `docs/decisions-log.md`: new entry for E1b + E1d (NEEDS-line protocol completed).
+
+**Decided:**
+- Strain prompt wording: "WHOOP strain for today (check app):" (float, warn if outside 0-21 but accept).
+- Dose prompt: "What dose did you take last night? (units)" (positive number, re-ask if invalid).
+- Order when both missing: dose first, then strain.
+- Prompts live inline in `dose.md`; deferred to a separate doc only if E6 (Telegram) needs them.
+- E6 (Telegram bot) has no remaining technical blocker - E5 is done.
+
+**Blocked:**
+- E8 Ph2: waiting on Dexcom Limited Access approval (submitted 2026-06-05).
+
+**Next (when Thomas resumes):**
+1. E1c - rule audit: review every threshold in `rules.py` line by line; conversation-heavy, no external blockers.
+2. C1 - sanitize 6 leak locations before public push (~15 min); unblocks E2.
+3. E6 - Telegram bot (~3-4h); E5 blocker is now cleared.
+
+**Commits this entry:** `<this-commit>`

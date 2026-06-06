@@ -22,12 +22,15 @@ discovered, and re-run the command (replacing OUTPUT) after each change.
    Capture full stdout as OUTPUT. (FLAGS expands to the flags collected so
    far; empty on the first run.)
 
-3. Anchor dose. If OUTPUT contains `no anchor dose on file`:
+3. Anchor dose. If OUTPUT contains `NEEDS: dose`:
    - Ask: "What dose did you take last night? (units)" -> DOSE
+   - Validate: must be a positive number. Re-ask if blank or non-numeric.
    - Append `--dose DOSE` to FLAGS, re-run step 2, replace OUTPUT.
 
 4. Strain. If OUTPUT contains `NEEDS: strain`:
-   - Ask: "Today's WHOOP strain isn't synced yet. What's today's strain?" -> STRAIN
+   - Ask: "WHOOP strain for today (check app):" -> STRAIN
+   - Validate: must be a number (e.g. 12.4). Re-ask if blank or non-numeric.
+   - If STRAIN < 0 or STRAIN > 21: warn "Outside normal WHOOP range (0-21), proceeding anyway" then continue.
    - Append `--strain STRAIN` to FLAGS, re-run step 2, replace OUTPUT.
 
 5. Hypo. If OUTPUT has a line matching `Hypo events.*: [1-9]`:
