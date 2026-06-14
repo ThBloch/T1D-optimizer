@@ -649,3 +649,23 @@ D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sib
 3. E6 - Telegram bot (~3-4h); E5 blocker is now cleared.
 
 **Commits this entry:** `<this-commit>`
+
+## 2026-06-14 dexcom-eu-api-provisioning
+
+**Changed:**
+- No code/docs. Administrative milestone on the Dexcom Developer API individual-access request (thread 9KggdA9XuwUAwqIpgQkx0Gn9JAvMtO9r).
+
+**Decided:**
+- Confirmed to Dexcom the request is personal-data-only (not commercial/research).
+- Proceeding with EU-based provisioning. Base URL must be `https://api.dexcom.eu` (sandbox `https://sandbox-api.dexcom.eu`) - `.eu` not `.com`. EU API only authenticates OUS Dexcom accounts.
+- Clients provisioned offline by Dexcom; no developer-portal registration needed.
+- Submitted provisioning details: App Name `t1d-optimizer`; description "personal tool that reads my own Dexcom CGM data to help optimize basal insulin dosing"; Redirect URI `http://localhost:8080/callback`.
+
+**Blocked:**
+- Waiting on Dexcom to return client credentials (client_id/secret) before any /events integration can start.
+
+**Next (when Thomas resumes):**
+1. On credential receipt: wire EU host (`api.dexcom.eu`) into the fetch path; sandbox-test the OAuth + dataRange flow before live.
+2. Revisit E8 insulin-via-API goal (decisions-log) now that official EU access replaces the dropped Playwright/Clarity-scrape approach.
+
+**Commits this entry:** `<this-commit>` session-log: dexcom EU API provisioning milestone.
