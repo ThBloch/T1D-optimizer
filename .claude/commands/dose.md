@@ -12,6 +12,13 @@ conditional on the run's output - do not gather inputs up front.
 Maintain a FLAGS string, initially empty. Append to it as conditions are
 discovered, and re-run the command (replacing OUTPUT) after each change.
 
+0. Refresh API caches:
+   ```bash
+   py -X utf8 "D:/claude/t1d/scripts/dexcom_events_fetch.py"
+   ```
+   (Incremental; typically <10s. Run before dexcom_fetch.py so the overnight
+   glucose window and basal anchor are fresh.)
+
 1. Ask: "New pen cartridge tonight? (y/n)"
    If y, append `--new-pen` to FLAGS.
 

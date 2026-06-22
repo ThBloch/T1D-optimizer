@@ -12,6 +12,7 @@ from rules import thomas_rules
 from dose_diary import load_diary, save_diary, find_row, upsert_row, parse_dose, DIARY_PATH
 from whoop_loader import load_whoop
 from dexcom_loader import load_dexcom, load_bolus_combined
+from dexcom_events_loader import load_api_basal, load_api_glucose
 from night_stats import night_stats, second_half_trend, OVN_START, WAKE_TIME, SECOND_HALF_FRACTION
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
@@ -70,7 +71,7 @@ def run(args=None):
 
     start  = datetime(yesterday.year, yesterday.month, yesterday.day, OVN_START)
     end    = datetime.combine(yesterday + timedelta(days=1), WAKE_TIME)
-    window = [(dt, v) for dt, v in readings if start <= dt <= end]
+    window = load_api_glucose(start, end)
     stats  = night_stats(window, min_readings=4)
     sh_slope_raw, _, _ = second_half_trend(window)
 
@@ -83,8 +84,8 @@ def run(args=None):
         bolus_in_sh = []
 
     if stats is None:
-        print(f"\nNot enough readings for overnight window ({yesterday} {OVN_START}:00 -> {today} {WAKE_TIME.strftime('%H:%M')}).")
-        print(f"Readings available: {len(readings)} - oldest: {readings[0][0].strftime('%H:%M %d-%m')}")
+        print(f"\nNot enough API EGV readings for overnight window ({yesterday} {OVN_START}:00 -> {today} {WAKE_TIME.strftime('%H:%M')}).")
+        print(f"Window readings: {len(window)} (run: py dexcom_events_fetch.py)")
         print(trend_note)
         return
 
@@ -112,25 +113,37 @@ def run(args=None):
     yesterday_dose = None
     dose_source = None
 
-    # Priority 1: Clarity CSV (authoritative)
+    # Priority 1: Developer API (authoritative; same G7-app source as Clarity, no manual export needed)
     try:
-        _, basal_list, _ = load_dexcom()
-        clarity_dose = next((u for _, d, u in basal_list if d == yesterday), None)
-        if clarity_dose is not None:
-            yesterday_dose = clarity_dose
-            dose_source = 'Clarity'
-            find_row(diary, yesterday)['dose_u'] = clarity_dose
+        api_basal = load_api_basal()
+        api_dose = next((u for _, d, u in api_basal if d == yesterday), None)
+        if api_dose is not None:
+            yesterday_dose = api_dose
+            dose_source = 'API'
+            find_row(diary, yesterday)['dose_u'] = api_dose
     except Exception as e:
-        print(f"  Clarity lookup failed: {e}")
+        print(f"  API basal lookup failed: {e}")
 
-    # Priority 2: diary (catches recent doses not yet in Clarity export)
+    # Priority 2: Clarity CSV (fallback when API cache is absent or stale)
+    if yesterday_dose is None:
+        try:
+            _, basal_list, _ = load_dexcom()
+            clarity_dose = next((u for _, d, u in basal_list if d == yesterday), None)
+            if clarity_dose is not None:
+                yesterday_dose = clarity_dose
+                dose_source = 'Clarity'
+                find_row(diary, yesterday)['dose_u'] = clarity_dose
+        except Exception as e:
+            print(f"  Clarity lookup failed: {e}")
+
+    # Priority 3: diary (catches doses not yet in either source)
     if yesterday_dose is None:
         diary_dose = parse_dose(find_row(diary, yesterday).get('dose_u'))
         if diary_dose is not None:
             yesterday_dose = diary_dose
             dose_source = 'diary'
 
-    # Priority 3: --dose flag (first run, no record anywhere)
+    # Priority 4: --dose flag (first run, no record anywhere)
     if yesterday_dose is None:
         if args.dose is not None:
             yesterday_dose = args.dose

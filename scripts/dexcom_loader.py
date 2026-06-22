@@ -135,32 +135,48 @@ def load_bolus_events():
 def load_bolus_combined():
     """Bolus events merged across all sources, all dates.
 
-    Clarity Hurtig rows are G7-app manual entries (regular pen days).
-    Glooko ACS7HM rows are smart-pen NFC syncs (NovoPen 6 days). The two
-    streams are disjoint by construction - manual entries never reach
-    Glooko's pen-source rows, and smart-pen events never reach Clarity's
-    raw CSV. No cutover or dedup needed.
+    Priority by source:
+      - Dexcom Developer API fastActing: authoritative from its earliest covered date.
+        Same underlying source as Clarity Hurtig (G7-app entries); date cutover prevents
+        double-counting.
+      - Clarity Hurtig rows: G7-app manual entries for dates strictly before API coverage,
+        or when no API cache exists yet.
+      - Glooko ACS* rows: NovoPen 6 NFC syncs, always disjoint from the G7-app stream
+        by construction (smart-pen events never reach the G7 app or Clarity raw CSV).
 
-    Emits a log-warn (does NOT filter) when a same-(minute, units)
-    event appears in both streams - that would indicate the
-    disjoint-by-construction assumption has broken (e.g. a future
-    Glooko upgrade ingests G7-app data).
+    Emits a log-warn when a same-(minute, units) event appears in both the merged G7-app
+    stream and Glooko - that would indicate the disjoint assumption has broken.
 
     Returns sorted [(datetime, units), ...].
     """
     from novopen_loader import load_glooko_bolus
     from bolus_classification import find_minute_unit_overlaps
-    clarity = list(load_bolus_events())
-    glooko  = list(load_glooko_bolus())
-    overlaps = find_minute_unit_overlaps(clarity, glooko)
+
+    try:
+        from dexcom_events_loader import load_api_bolus
+        api_bolus = list(load_api_bolus())
+    except Exception:
+        api_bolus = []
+
+    if api_bolus:
+        api_cutover = api_bolus[0][0].date()
+        clarity = [(dt, u) for dt, u in load_bolus_events() if dt.date() < api_cutover]
+    else:
+        clarity = list(load_bolus_events())
+
+    glooko    = list(load_glooko_bolus())
+    g7_stream = sorted(clarity + api_bolus, key=lambda e: e[0])
+
+    overlaps = find_minute_unit_overlaps(g7_stream, glooko)
     if overlaps:
         print(f'[dexcom_loader] WARNING: {len(overlaps)} bolus event(s) appear '
-              f'in BOTH Clarity and Glooko streams (matched on (minute, units)). '
+              f'in BOTH G7-app stream and Glooko (matched on (minute, units)). '
               f'Streams previously disjoint by construction - investigate.')
         for dt, u in overlaps[:5]:
             print(f'  {dt} - {u}u')
         if len(overlaps) > 5:
             print(f'  ... and {len(overlaps) - 5} more')
-    merged = clarity + glooko
+
+    merged = g7_stream + glooko
     merged.sort(key=lambda e: e[0])
     return merged

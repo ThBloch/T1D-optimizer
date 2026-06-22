@@ -669,3 +669,58 @@ D. NEW sub-todo entry (placement TBD - could be a sub-bullet under E1b, or a sib
 2. Revisit E8 insulin-via-API goal (decisions-log) now that official EU access replaces the dropped Playwright/Clarity-scrape approach.
 
 **Commits this entry:** `<this-commit>` session-log: dexcom EU API provisioning milestone.
+
+## 2026-06-22 e8-dexcom-developer-api
+
+**Changed:**
+- `scripts/dexcom_events_fetch.py` (new): OAuth fetcher for Dexcom Developer API v3
+  (api.dexcom.eu). Token load/refresh/rotate with persisted `expires_at`. Incremental
+  by default (7-day overlap cursor); `--full` seeds events from diagnosis + egvs last
+  30 days. Events in 30-day chunks; egvs in 6h chunks (~72 records, safely under
+  API's ~100-record cap). Dedup-merge by recordId; 429 backoff.
+- `scripts/dexcom_events_loader.py` (new): offline reader for `data/dexcom_api/`
+  cache. Exposes `load_api_basal()`, `load_api_bolus()`, `load_api_glucose(start, end)`.
+  mg/dL -> mmol/L conversion (/ 18.0182), tz-offset strip, eventStatus filtering
+  (deleted skipped, updated included).
+- `tests/test_dexcom_events_loader.py` (new): 22 unit cases covering tz-strip (4),
+  basal shape/deleted/updated/same-day-sum/sort (8), bolus fast-only/deleted/sort (4),
+  glucose mg/dL conversion/window-filter/sort (6). All green.
+- `scripts/dexcom_fetch.py`: overnight window now from `load_api_glucose()` instead of
+  filtering pydexcom 24h pull; anchor priority changed to API (1) -> Clarity (2) ->
+  diary (3) -> --dose flag (4).
+- `scripts/dexcom_loader.py`: `load_bolus_combined()` now prefers API fastActing from
+  its earliest covered date (2025-04-26); Clarity Hurtig only for pre-cutover dates;
+  Glooko always disjoint.
+- `tests/test_dexcom_fetch.py`: stubs updated (load_api_glucose, load_api_basal added);
+  1 new case `test_api_basal_used_as_anchor_priority_1`. 120 tests total, all green.
+- `.claude/commands/dose.md`: step 0 added to refresh API cache before dexcom_fetch.py.
+- `CLAUDE.md`: new scripts listed, `data/dexcom_api/` in structure, data sources updated.
+- `docs/decisions-log.md`: new E8 implementation entry (2026-06-22).
+- `docs/improvements.md`: E8 marked done.
+
+**Decided:**
+- API authoritative for basal (longActing) + bolus (fastActing, regular-pen era Apr-May
+  2025). NovoPen bolus not in API - Glooko remains the sole bolus source for current era.
+- Overnight EGV window (job 2) moves to Developer API; live dose-time reading stays on
+  pydexcom Share API (3h EU delay makes Developer API unusable for real-time).
+- Rolling 30-day EGV cache only; deep glucose history stays in Clarity CSV (full backfill
+  would require ~1000 chunk requests due to ~100-record API cap with no pagination).
+- Date-cutover approach for bolus merge: API fastActing from earliest covered date,
+  Clarity Hurtig before that; avoids double-counting the same G7-app source.
+- Reconciliation passed: 0 mismatches on 390 overlapping basal dates; 100/100 EGV
+  values match within 0.1 mmol/L on a shared overnight window.
+- Implementation done in 4 phases (auth, fetcher, loader+tests, integration+docs) with
+  separate model/effort per phase per user preference.
+
+**Blocked:**
+- Nothing. E8b (Glooko bolus automation) still parked - NovoPen bolus not in Developer
+  API, Glooko export remains manual.
+
+**Next (when Thomas resumes):**
+1. E6 (Telegram bot, ~3-4h) - E8 blocker now removed; next phase in automation roadmap.
+2. E1c (rule audit + skip toggles) - not blocked, low setup cost; review every threshold
+   in rules.py with Thomas line by line.
+3. E10 (nighttime objective spec) - not blocked; define composite score, run validation
+   gate on historical nights.
+
+**Commits this entry:** <this-commit>
