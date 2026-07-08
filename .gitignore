@@ -1,7 +1,7 @@
-# Raw health data — never commit
+# Raw health data - never commit
 data/
 
-# Credentials — never commit
+# Credentials - never commit
 dexcom_creds.json
 dexcom_api_creds.json
 
@@ -21,3 +21,6 @@ output/
 
 # Superseded files (pre-API CSVs, old scripts)
 archive/
+
+# Scratch file for pasting big prompts into Claude Code (transient content)
+File_for_claude_to_read.md
